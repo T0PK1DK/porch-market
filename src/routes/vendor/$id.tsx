@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Clock, MapPin, Trash2 } from "lucide-react";
+import { ArrowLeft, Clock, MapPin, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Shell } from "@/components/shell";
 import { Cover } from "@/components/vendor-card";
 import {
+  isOwnedByThisDevice,
   loadHolds,
   loadVendors,
   money,
@@ -41,6 +42,7 @@ function Storefront() {
   }, [id]);
 
   const vendor = vendors.find((item) => item.id === id);
+  const mine = isOwnedByThisDevice(vendor);
 
   if (!vendor && !ready) {
     return (
@@ -58,19 +60,14 @@ function Storefront() {
           <p className="mt-3 text-muted">
             It may live in another browser. Porches you create stay on the device that made them.
           </p>
-          <Link
-            to="/"
-            className="mt-6 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-porch"
-          >
+          <Link to="/" className="mt-6 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-porch">
             <ArrowLeft className="size-4" aria-hidden="true" />
-            Back to all vendors
+            Back to the market
           </Link>
         </div>
       </Shell>
     );
   }
-
-  const mine = vendor.id.startsWith("custom-");
 
   function hold(productId: string, productName: string) {
     if (!buyerName.trim()) {
@@ -95,7 +92,7 @@ function Storefront() {
 
   return (
     <Shell>
-      <div className="pt-6">
+      <div className="pt-4">
         <Link
           to="/"
           className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-muted hover:text-ink"
@@ -104,9 +101,14 @@ function Storefront() {
           All vendors
         </Link>
 
-        <Cover src={vendor.image} alt="" className="mt-2 aspect-[16/9] rounded-2xl sm:aspect-[2/1]" />
+        <Cover
+          src={vendor.image}
+          alt=""
+          lazy={false}
+          className="mt-1 aspect-[16/9] rounded-2xl sm:aspect-[2/1]"
+        />
 
-        <div className="mt-6 grid gap-8 md:grid-cols-[1.2fr_0.8fr]">
+        <div className="mt-5 grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
           <div>
             <p className="text-xs font-medium tracking-wide text-porch uppercase">{vendor.category}</p>
             <h1 className="mt-2 font-display text-4xl text-ink sm:text-5xl">{vendor.name}</h1>
@@ -122,20 +124,30 @@ function Storefront() {
               {vendor.pickup}
             </p>
             <p className="mt-3 text-sm text-muted">
-              Pay at pickup. A hold is a request, not a charge — nothing is processed here.
+              A hold is a name on a box. Pay at the door — nothing is charged here.
             </p>
             {mine && (
-              <button
-                type="button"
-                className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm text-muted hover:text-ink"
-                onClick={() => {
-                  removeVendor(vendor.id);
-                  navigate({ to: "/" });
-                }}
-              >
-                <Trash2 className="size-4" aria-hidden="true" />
-                Remove this porch from this device
-              </button>
+              <div className="mt-4 flex flex-col items-start gap-2">
+                <Link
+                  to="/create"
+                  search={{ edit: vendor.id }}
+                  className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-porch"
+                >
+                  <Pencil className="size-4" aria-hidden="true" />
+                  Edit this porch
+                </Link>
+                <button
+                  type="button"
+                  className="inline-flex min-h-11 items-center gap-2 text-sm text-muted hover:text-ink"
+                  onClick={() => {
+                    removeVendor(vendor.id);
+                    navigate({ to: "/" });
+                  }}
+                >
+                  <Trash2 className="size-4" aria-hidden="true" />
+                  Remove this porch from this device
+                </button>
+              </div>
             )}
           </aside>
         </div>
@@ -148,15 +160,22 @@ function Storefront() {
           </p>
         )}
 
-        <h2 className="mt-10 font-display text-3xl text-ink">Available now</h2>
+        <h2 className="mt-8 font-display text-3xl text-ink">Available now</h2>
         <ul className="mt-4 divide-y divide-line rounded-2xl border border-line bg-card">
-          {vendor.products.map((product) => {
+          {vendor.products.map((product, index) => {
             const open = activeId === product.id;
             const productHolds = holds.filter((holdItem) => holdItem.productId === product.id);
             return (
               <li key={product.id} className="p-4 sm:p-5">
                 <div className="flex gap-4">
-                  <Cover src={product.image} alt="" className="size-20 shrink-0 rounded-xl sm:size-24" />
+                  <Cover
+                    src={product.image}
+                    alt=""
+                    width={160}
+                    height={160}
+                    lazy={index > 0}
+                    className="size-20 shrink-0 rounded-xl sm:size-24"
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <h3 className="font-display text-xl text-ink">{product.name}</h3>
