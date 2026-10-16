@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-sans: "Outfit", system-ui, sans-serif;
+
+  --color-paper: #f3eee4;
+  --color-ink: #1c1915;
+  --color-muted: #6e675e;
+  --color-line: #e3dacb;
+  --color-card: #fffdf8;
+  --color-foam: #efe7d6;
+  --color-porch: #1e4630;
+  --color-porch-deep: #163626;
+  --color-mango: #c2410c;
+  --color-mango-deep: #9a3412;
+
+  --shadow-card: 0 1px 2px rgb(28 25 21 / 0.05), 0 12px 32px rgb(28 25 21 / 0.06);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-porch);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition: none !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
