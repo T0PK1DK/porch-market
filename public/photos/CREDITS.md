@@ -1,7 +1,7 @@
 # Photo credits
 
-All photos were downloaded once, resized, and committed as WebP.
-None are hotlinked at runtime.
+All photos were downloaded once, resized, compressed, and committed as WebP.
+None are hotlinked at runtime. Each file is under 80KB.
 
 ## License
 
@@ -12,24 +12,25 @@ None are hotlinked at runtime.
 
 ## Files
 
-| File | Source | License |
-| --- | --- | --- |
-| `bread.webp` | Unsplash `photo-1509440159596-0249088772ff` | Unsplash License |
-| `sourdough.webp` | Unsplash `photo-1549931319-a545dcf3bc73` | Unsplash License |
-| `focaccia.webp` | Unsplash `photo-1586444248902-2f64eddc13df` | Unsplash License |
-| `honey.webp` | Unsplash `photo-1587049352846-4a222e784d38` | Unsplash License |
-| `honey-jars.webp` | Unsplash `photo-1558642452-9d2a7deb7f62` | Unsplash License |
-| `jam.webp` | Unsplash `photo-1471943311424-646960669fbc` | Unsplash License |
-| `cookies.webp` | Unsplash `photo-1499636136210-6f4ee915583e` | Unsplash License |
-| `chocolate-chip.webp` | Unsplash `photo-1558961363-fa8fdf82db35` | Unsplash License |
-| `shortbread.webp` | Unsplash `photo-1590080875515-8a3a8dc5735e` | Unsplash License |
-| `eggs-nest.webp` | Unsplash `photo-1582722872445-44dc5f7e3c8f` | Unsplash License |
-| `eggs.webp` | Unsplash `photo-1498654077810-12c21d4d6dc3` | Unsplash License |
-| `mangoes.webp` | Unsplash `photo-1553279768-865429fa0078` | Unsplash License |
-| `hot-sauce.webp` | Unsplash `photo-1583119022894-919a68a3d0e3` | Unsplash License |
-| `mojo.webp` | Unsplash `photo-1611080626919-7cf5a9dbab5b` | Unsplash License |
-| `peppers.webp` | [Pexels 1340116](https://www.pexels.com/photo/1340116/) | Pexels License |
-| `market.webp` | [Pexels 1300972](https://www.pexels.com/photo/1300972/) | Pexels License |
+| File | Depicts | Source | License |
+| --- | --- | --- | --- |
+| `bread.webp` | Country loaves | Unsplash `photo-1509440159596-0249088772ff` | Unsplash License |
+| `sourdough.webp` | Sliced loaf | Unsplash `photo-1549931319-a545dcf3bc73` | Unsplash License |
+| `focaccia.webp` | Round hearth loaf | Unsplash `photo-1586444248902-2f64eddc13df` | Unsplash License |
+| `honey.webp` | Honey jar and dipper | Same capture as `honey-jars.webp` | Unsplash License |
+| `honey-jars.webp` | Honey jar and dipper | Unsplash `photo-1558642452-9d2a7deb7f62` | Unsplash License |
+| `jam.webp` | Sealed jar of preserves | Unsplash `photo-1471943311424-646960669fbc` | Unsplash License |
+| `cookies.webp` | Chocolate chip cookies | Unsplash `photo-1499636136210-6f4ee915583e` | Unsplash License |
+| `chocolate-chip.webp` | Cookies in a bowl | Unsplash `photo-1558961363-fa8fdf82db35` | Unsplash License |
+| `shortbread.webp` | Baked cookies | Same capture as `cookies.webp` | Unsplash License |
+| `eggs-nest.webp` | Bowl of eggs | Unsplash `photo-1582722872445-44dc5f7e3c8f` | Unsplash License |
+| `eggs.webp` | Carton of eggs | Unsplash `photo-1498654077810-12c21d4d6dc3` | Unsplash License |
+| `mangoes.webp` | Mangoes | Unsplash `photo-1601493700631-2b16ec4b4716` | Unsplash License |
+| `hot-sauce.webp` | Red chile | Unsplash `photo-1583119022894-919a68a3d0e3` | Unsplash License |
+| `peppers.webp` | Red chile | Same capture as `hot-sauce.webp` | Unsplash License |
+| `mojo.webp` | Sour oranges | Unsplash `photo-1611080626919-7cf5a9dbab5b` | Unsplash License |
+| `market.webp` | Market produce | [Pexels 1300972](https://www.pexels.com/photo/1300972/) | Pexels License |
 
-Unsplash originals: `https://unsplash.com/photos/<id-without-photo-prefix>` or
-`https://images.unsplash.com/<photo-id>`.
+Every Unsplash still was visually checked after download. A few Unsplash IDs
+resolve to unrelated subjects, so those files were replaced with a verified
+still of the food they label.
