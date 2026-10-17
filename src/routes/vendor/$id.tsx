@@ -33,7 +33,8 @@ function Storefront() {
   const [buyerName, setBuyerName] = useState("");
   const [note, setNote] = useState("");
   const [formError, setFormError] = useState("");
-  const [confirmed, setConfirmed] = useState<string | null>(null);
+  const [lastHold, setLastHold] = useState<Hold | null>(null);
+  const [canceledNote, setCanceledNote] = useState("");
 
   useEffect(() => {
     setVendors(loadVendors());
@@ -74,7 +75,7 @@ function Storefront() {
       setFormError("Leave your name so they know whose box it is.");
       return;
     }
-    const next = saveHold({
+    const placed: Hold = {
       id: `hold-${Date.now().toString(36)}`,
       vendorId: id,
       productId,
@@ -82,12 +83,23 @@ function Storefront() {
       buyerName: buyerName.trim(),
       note: note.trim(),
       createdAt: new Date().toISOString(),
-    });
+    };
+    const next = saveHold(placed);
     setHolds(next.filter((item) => item.vendorId === id));
-    setConfirmed(productName);
+    setLastHold(placed);
+    setCanceledNote("");
     setActiveId(null);
     setNote("");
     setFormError("");
+  }
+
+  function cancelHold(holdId: string) {
+    const next = removeHold(holdId).filter((item) => item.vendorId === id);
+    setHolds(next);
+    if (lastHold?.id === holdId) {
+      setCanceledNote(`Canceled the hold for ${lastHold.buyerName}.`);
+      setLastHold(null);
+    }
   }
 
   return (
@@ -152,11 +164,28 @@ function Storefront() {
           </aside>
         </div>
 
-        {confirmed && (
+        {lastHold && (
+          <div
+            role="status"
+            className="mt-6 rounded-2xl border border-line bg-foam px-4 py-3 text-ink"
+          >
+            <p className="font-medium">Held for {lastHold.buyerName}</p>
+            <p className="mt-1 text-sm">
+              {lastHold.productName}
+              {lastHold.note ? ` — ${lastHold.note}` : ""}. A name on a box — pay at the door.
+            </p>
+            <button
+              type="button"
+              className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-porch hover:underline"
+              onClick={() => cancelHold(lastHold.id)}
+            >
+              Cancel this hold
+            </button>
+          </div>
+        )}
+        {canceledNote && !lastHold && (
           <p role="status" className="mt-6 rounded-2xl bg-foam px-4 py-3 text-sm text-ink">
-            Set aside: {confirmed}
-            {buyerName.trim() ? ` for ${buyerName.trim()}` : ""}. Bring payment to pickup. This hold
-            stays on this device.
+            {canceledNote}
           </p>
         )}
 
@@ -189,7 +218,6 @@ function Storefront() {
                       onClick={() => {
                         setActiveId(open ? null : product.id);
                         setFormError("");
-                        setConfirmed(null);
                       }}
                     >
                       {open ? "Close" : "Hold for pickup"}
@@ -213,6 +241,8 @@ function Storefront() {
                         onChange={(e) => setBuyerName(e.target.value)}
                         placeholder="Alex"
                         autoComplete="name"
+                        aria-invalid={Boolean(formError)}
+                        required
                       />
                     </label>
                     <label className="text-sm font-medium text-ink">
@@ -253,10 +283,10 @@ function Storefront() {
                         </span>
                         <button
                           type="button"
-                          className="shrink-0 text-muted underline underline-offset-2 hover:text-ink"
-                          onClick={() => setHolds(removeHold(item.id).filter((h) => h.vendorId === id))}
+                          className="inline-flex min-h-11 shrink-0 items-center text-sm font-medium text-porch hover:underline"
+                          onClick={() => cancelHold(item.id)}
                         >
-                          Cancel
+                          Cancel hold
                         </button>
                       </li>
                     ))}

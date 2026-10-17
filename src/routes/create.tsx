@@ -7,14 +7,18 @@ import {
   addVendor,
   CATEGORIES,
   CATEGORY_COVER,
+  formatPriceInput,
   isOwnedByThisDevice,
   loadVendors,
   money,
+  parsePrice,
   resizeImage,
   safeImage,
   slugId,
   updateVendor,
+  validatePorchDraft,
   type Category,
+  type FieldError,
   type Vendor,
 } from "@/lib/market";
 
@@ -57,9 +61,13 @@ function CreatePorch() {
   const [products, setProducts] = useState<DraftProduct[]>([
     { key: "p1", name: "", price: "", desc: "" },
   ]);
-  const [errors, setErrors] = useState<string[]>([]);
+  const [errors, setErrors] = useState<FieldError[]>([]);
   const [photoNote, setPhotoNote] = useState("");
   const [busy, setBusy] = useState(false);
+
+  function errorFor(field: string): string | undefined {
+    return errors.find((item) => item.field === field)?.message;
+  }
 
   useEffect(() => {
     if (!edit) {
@@ -111,7 +119,7 @@ function CreatePorch() {
       .map((p) => ({
         id: p.key,
         name: p.name.trim(),
-        price: Number(p.price) || 0,
+        price: parsePrice(p.price) ?? 0,
         desc: p.desc.trim() || "Available for local pickup.",
         image: CATEGORY_COVER[category],
       })),
@@ -138,23 +146,11 @@ function CreatePorch() {
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const nextErrors: string[] = [];
-    if (!name.trim()) nextErrors.push("Give the kitchen a name.");
-    if (!location.trim()) nextErrors.push("Say where the porch is.");
-    if (!bio.trim()) nextErrors.push("Write a short bio.");
-    if (!pickup.trim()) nextErrors.push("Add a pickup window.");
-    const readyProducts = products.filter((p) => p.name.trim() || p.price.trim() || p.desc.trim());
-    if (readyProducts.length === 0) nextErrors.push("Add at least one product.");
-    for (const product of readyProducts) {
-      if (!product.name.trim()) nextErrors.push("Every product needs a name.");
-      const price = Number(product.price);
-      if (!product.price.trim() || Number.isNaN(price) || price < 0) {
-        nextErrors.push(`Add a price for ${product.name.trim() || "each product"}.`);
-      }
-    }
+    const nextErrors = validatePorchDraft({ name, location, pickup, bio, products });
     setErrors(nextErrors);
     if (nextErrors.length) return;
 
+    const readyProducts = products.filter((p) => p.name.trim() || p.price.trim() || p.desc.trim());
     const existing = editing ? loadVendors().find((item) => item.id === existingId) : undefined;
     const vendor: Vendor = {
       id: existing?.id ?? slugId(name),
@@ -170,7 +166,7 @@ function CreatePorch() {
         return {
           id: p.key,
           name: p.name.trim(),
-          price: Number(p.price),
+          price: parsePrice(p.price) ?? 0,
           desc: p.desc.trim() || "Available for local pickup.",
           image: prior?.image || CATEGORY_COVER[category],
         };
@@ -239,29 +235,32 @@ function CreatePorch() {
           <form onSubmit={submit} className="mt-8" noValidate>
             {errors.length > 0 && (
               <div role="alert" className="mb-5 rounded-2xl border border-line bg-foam px-4 py-3 text-sm text-ink">
-                <ul className="list-disc space-y-1 pl-4">
+                <p className="font-medium">A few things to fix before this porch can save.</p>
+                <ul className="mt-2 list-disc space-y-1 pl-4">
                   {errors.map((error) => (
-                    <li key={error}>{error}</li>
+                    <li key={error.field}>{error.message}</li>
                   ))}
                 </ul>
               </div>
             )}
 
-            <Field label="Kitchen name">
+            <Field label="Kitchen name" error={errorFor("name")}>
               <input
                 className={field}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Bayfront Sourdough"
+                aria-invalid={Boolean(errorFor("name"))}
                 required
               />
             </Field>
-            <Field label="Where’s the porch?">
+            <Field label="Where’s the porch?" error={errorFor("location")}>
               <input
                 className={field}
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Miami Beach, FL"
+                aria-invalid={Boolean(errorFor("location"))}
                 required
               />
             </Field>
@@ -276,22 +275,24 @@ function CreatePorch() {
                 ))}
               </select>
             </Field>
-            <Field label="Short bio">
+            <Field label="Short bio" error={errorFor("bio")}>
               <textarea
                 className={field}
                 rows={3}
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 placeholder="What you make, and anything a neighbor should know."
+                aria-invalid={Boolean(errorFor("bio"))}
                 required
               />
             </Field>
-            <Field label="Pickup">
+            <Field label="Pickup" error={errorFor("pickup")}>
               <input
                 className={field}
                 value={pickup}
                 onChange={(e) => setPickup(e.target.value)}
                 placeholder="Saturdays, 9am–noon, front porch"
+                aria-invalid={Boolean(errorFor("pickup"))}
                 required
               />
             </Field>
@@ -311,6 +312,11 @@ function CreatePorch() {
 
             <div className="mt-8 border-t border-line pt-6">
               <h2 className="font-display text-2xl text-ink">What you’re selling</h2>
+              {errorFor("products") ? (
+                <p className="mt-2 text-sm text-mango" role="alert">
+                  {errorFor("products")}
+                </p>
+              ) : null}
               <div className="mt-4 space-y-4">
                 {products.map((product, index) => (
                   <div key={product.key} className="rounded-2xl border border-line bg-card p-4">
@@ -319,7 +325,7 @@ function CreatePorch() {
                       {products.length > 1 && (
                         <button
                           type="button"
-                          className="inline-flex min-h-11 items-center gap-1 text-sm text-muted hover:text-ink"
+                          className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-ink hover:underline"
                           onClick={() => setProducts((list) => list.filter((item) => item.key !== product.key))}
                         >
                           <Trash2 className="size-4" aria-hidden="true" />
@@ -327,21 +333,26 @@ function CreatePorch() {
                         </button>
                       )}
                     </div>
-                    <Field label="Name">
+                    <Field label="Name" error={errorFor(`name:${product.key}`)}>
                       <input
                         className={field}
                         value={product.name}
                         onChange={(e) => updateProduct(product.key, { name: e.target.value })}
                         placeholder="Country sourdough"
+                        aria-invalid={Boolean(errorFor(`name:${product.key}`))}
                       />
                     </Field>
-                    <Field label="Price (USD)">
+                    <Field label="Price (USD)" error={errorFor(`price:${product.key}`)}>
                       <input
                         className={field}
                         inputMode="decimal"
                         value={product.price}
                         onChange={(e) => updateProduct(product.key, { price: e.target.value })}
+                        onBlur={() =>
+                          updateProduct(product.key, { price: formatPriceInput(product.price) })
+                        }
                         placeholder="12"
+                        aria-invalid={Boolean(errorFor(`price:${product.key}`))}
                       />
                     </Field>
                     <Field label="Description">
@@ -412,11 +423,24 @@ function CreatePorch() {
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({
+  label,
+  error,
+  children,
+}: {
+  label: string;
+  error?: string;
+  children: ReactNode;
+}) {
   return (
     <label className="mt-4 block text-sm font-medium text-ink">
       {label}
       {children}
+      {error ? (
+        <p className="mt-1.5 text-sm font-normal text-mango" role="alert">
+          {error}
+        </p>
+      ) : null}
     </label>
   );
 }

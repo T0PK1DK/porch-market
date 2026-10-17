@@ -22,8 +22,12 @@ export function Cover({
   const size = photoSize(src);
   const w = width ?? size.width;
   const h = height ?? size.height;
+  const sized = className?.includes("aspect-") || className?.includes("size-");
   return (
-    <div className={`overflow-hidden bg-foam ${className ?? ""}`}>
+    <div
+      className={`overflow-hidden bg-foam ${className ?? ""}`}
+      style={sized ? undefined : { aspectRatio: `${w} / ${h}` }}
+    >
       {ok ? (
         <img
           src={src}
@@ -32,7 +36,7 @@ export function Cover({
           height={h}
           loading={lazy ? "lazy" : "eager"}
           decoding="async"
-          className="h-full w-full object-cover"
+          className="block h-full w-full object-cover"
           onError={() => setOk(false)}
         />
       ) : (
@@ -77,11 +81,11 @@ export function VendorCard({ vendor, owned = false }: { vendor: Vendor; owned?: 
           </ul>
         </div>
       </Link>
-      <div className="flex items-center justify-between gap-2 border-t border-line px-3 py-2">
+      <div className="flex items-center justify-between gap-2 border-t border-line px-3">
         <Link
           to="/vendor/$id"
           params={{ id: vendor.id }}
-          className="text-sm font-medium text-porch hover:underline"
+          className="inline-flex min-h-11 items-center text-sm font-medium text-porch hover:underline"
         >
           Visit porch
         </Link>
@@ -89,7 +93,7 @@ export function VendorCard({ vendor, owned = false }: { vendor: Vendor; owned?: 
           <Link
             to="/create"
             search={{ edit: vendor.id }}
-            className="text-sm font-medium text-muted hover:text-ink"
+            className="inline-flex min-h-11 items-center text-sm font-medium text-ink hover:underline"
           >
             Edit
           </Link>

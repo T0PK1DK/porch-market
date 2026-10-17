@@ -66,7 +66,13 @@ function Home() {
     });
   }, [vendors, query, category]);
 
-  const weekly = useMemo(() => thisWeeksFood(shown.length ? shown : vendors), [shown, vendors]);
+  const weekly = useMemo(() => thisWeeksFood(shown), [shown]);
+  const filtering = query.trim().length > 0 || category !== "All";
+
+  function clearFilters() {
+    setQuery("");
+    setCategory("All");
+  }
 
   return (
     <Shell>
@@ -74,7 +80,7 @@ function Home() {
         Cottage kitchens on the block — browse, then ask for a pickup hold.
       </p>
 
-      <label className="mt-3 flex min-h-11 items-center gap-2 rounded-2xl border border-line bg-card px-3 shadow-card">
+      <label className="mt-3 flex min-h-11 items-center gap-2 rounded-2xl border border-line bg-card px-3 shadow-card focus-within:border-porch">
         <Search className="size-5 shrink-0 text-muted" aria-hidden="true" />
         <span className="sr-only">Search porches</span>
         <input
@@ -83,6 +89,15 @@ function Home() {
           placeholder="Search loaves, honey, a neighborhood…"
           className="w-full bg-transparent py-2.5 text-base text-ink outline-none placeholder:text-muted"
         />
+        {query.trim() ? (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            className="inline-flex min-h-11 shrink-0 items-center text-sm font-medium text-ink"
+          >
+            Clear
+          </button>
+        ) : null}
       </label>
 
       <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-0.5" role="group" aria-label="Category">
@@ -123,14 +138,33 @@ function Home() {
         {shown.length === 0 ? (
           <div className="mt-3 rounded-2xl border border-dashed border-line bg-card px-5 py-8 text-center">
             <p className="font-display text-2xl text-ink">Nothing on the block matches.</p>
-            <p className="mt-2 text-sm text-muted">Try another kitchen, or open yours.</p>
-            <Link
-              to="/create"
-              search={{}}
-              className="mt-4 inline-flex min-h-11 items-center rounded-full bg-porch px-5 text-sm font-medium text-paper hover:bg-porch-deep"
-            >
-              Open a porch
-            </Link>
+            <p className="mt-2 text-sm text-muted">
+              {query.trim() && category !== "All"
+                ? `No porches match “${query.trim()}” in ${category}.`
+                : query.trim()
+                  ? `No porches match “${query.trim()}”.`
+                  : category !== "All"
+                    ? `No ${category.toLowerCase()} porches right now.`
+                    : "Try another kitchen, or open yours."}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              {filtering ? (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="inline-flex min-h-11 items-center rounded-full px-5 text-sm font-medium text-ink ring-1 ring-line hover:bg-foam"
+                >
+                  Clear filters
+                </button>
+              ) : null}
+              <Link
+                to="/create"
+                search={{}}
+                className="inline-flex min-h-11 items-center rounded-full bg-porch px-5 text-sm font-medium text-paper hover:bg-porch-deep"
+              >
+                Open a porch
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -180,7 +214,7 @@ function FilterChip({
       aria-pressed={on}
       onClick={onClick}
       className={
-        "shrink-0 rounded-full px-3.5 py-2 text-sm font-medium " +
+        "inline-flex min-h-11 shrink-0 items-center rounded-full px-3.5 text-sm font-medium " +
         (on ? "bg-porch text-paper" : "bg-foam text-ink hover:bg-line")
       }
     >
