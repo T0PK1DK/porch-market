@@ -1,23 +1,37 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Plus, Trash2 } from "lucide-react";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Shell } from "@/components/shell";
 import { Cover } from "@/components/vendor-card";
 import {
   addVendor,
   CATEGORIES,
   CATEGORY_COVER,
+  isOwnedByThisDevice,
+  loadVendors,
   money,
   resizeImage,
   safeImage,
   slugId,
+  updateVendor,
   type Category,
   type Vendor,
 } from "@/lib/market";
 
+type CreateSearch = {
+  edit?: string;
+};
+
 export const Route = createFileRoute("/create")({
-  head: () => ({
-    meta: [{ title: "Open a porch — Porch Market" }],
+  validateSearch: (search: Record<string, unknown>): CreateSearch => ({
+    edit: typeof search.edit === "string" ? search.edit : undefined,
+  }),
+  head: ({ match }) => ({
+    meta: [
+      {
+        title: match.search.edit ? "Edit your porch — Porch Market" : "Open a porch — Porch Market",
+      },
+    ],
   }),
   component: CreatePorch,
 });
@@ -29,13 +43,17 @@ const field =
 
 function CreatePorch() {
   const navigate = useNavigate();
+  const { edit } = Route.useSearch();
+  const [ready, setReady] = useState(!edit);
+  const [denied, setDenied] = useState(false);
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [category, setCategory] = useState<Category>("Baked Goods");
   const [bio, setBio] = useState("");
   const [pickup, setPickup] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
   const [photo, setPhoto] = useState("");
+  const [existingImage, setExistingImage] = useState("");
+  const [existingId, setExistingId] = useState<string | null>(null);
   const [products, setProducts] = useState<DraftProduct[]>([
     { key: "p1", name: "", price: "", desc: "" },
   ]);
@@ -43,10 +61,45 @@ function CreatePorch() {
   const [photoNote, setPhotoNote] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const cover = photo || safeImage(imageUrl, CATEGORY_COVER[category]);
+  useEffect(() => {
+    if (!edit) {
+      setReady(true);
+      setDenied(false);
+      return;
+    }
+    const vendor = loadVendors().find((item) => item.id === edit);
+    if (!vendor || !isOwnedByThisDevice(vendor)) {
+      setDenied(true);
+      setReady(true);
+      return;
+    }
+    setExistingId(vendor.id);
+    setName(vendor.name);
+    setLocation(vendor.location);
+    setCategory(vendor.category);
+    setBio(vendor.bio);
+    setPickup(vendor.pickup);
+    setExistingImage(vendor.image);
+    setPhoto("");
+    setProducts(
+      vendor.products.length
+        ? vendor.products.map((product) => ({
+            key: product.id,
+            name: product.name,
+            price: String(product.price),
+            desc: product.desc,
+          }))
+        : [{ key: "p1", name: "", price: "", desc: "" }],
+    );
+    setDenied(false);
+    setReady(true);
+  }, [edit]);
+
+  const cover = photo || safeImage(existingImage, CATEGORY_COVER[category]);
+  const editing = Boolean(edit && existingId && !denied);
 
   const preview: Vendor = {
-    id: "preview",
+    id: existingId ?? "preview",
     name: name.trim() || "Your kitchen",
     location: location.trim() || "Neighborhood",
     category,
@@ -60,7 +113,7 @@ function CreatePorch() {
         name: p.name.trim(),
         price: Number(p.price) || 0,
         desc: p.desc.trim() || "Available for local pickup.",
-        image: cover,
+        image: CATEGORY_COVER[category],
       })),
   };
 
@@ -71,7 +124,7 @@ function CreatePorch() {
     try {
       const data = await resizeImage(file);
       if (data.length > 480_000) {
-        setPhotoNote("That photo is still too big for this browser. Try a smaller one, or paste a link.");
+        setPhotoNote("That photo is still too big for this browser. Try a smaller one.");
         setPhoto("");
         return;
       }
@@ -90,9 +143,9 @@ function CreatePorch() {
     if (!location.trim()) nextErrors.push("Say where the porch is.");
     if (!bio.trim()) nextErrors.push("Write a short bio.");
     if (!pickup.trim()) nextErrors.push("Add a pickup window.");
-    const ready = products.filter((p) => p.name.trim() || p.price.trim() || p.desc.trim());
-    if (ready.length === 0) nextErrors.push("Add at least one product.");
-    for (const product of ready) {
+    const readyProducts = products.filter((p) => p.name.trim() || p.price.trim() || p.desc.trim());
+    if (readyProducts.length === 0) nextErrors.push("Add at least one product.");
+    for (const product of readyProducts) {
       if (!product.name.trim()) nextErrors.push("Every product needs a name.");
       const price = Number(product.price);
       if (!product.price.trim() || Number.isNaN(price) || price < 0) {
@@ -102,23 +155,30 @@ function CreatePorch() {
     setErrors(nextErrors);
     if (nextErrors.length) return;
 
+    const existing = editing ? loadVendors().find((item) => item.id === existingId) : undefined;
     const vendor: Vendor = {
-      id: slugId(name),
+      id: existing?.id ?? slugId(name),
       name: name.trim(),
       location: location.trim(),
       category,
       bio: bio.trim(),
       image: cover,
       pickup: pickup.trim(),
-      products: ready.map((p) => ({
-        id: p.key,
-        name: p.name.trim(),
-        price: Number(p.price),
-        desc: p.desc.trim() || "Available for local pickup.",
-        image: CATEGORY_COVER[category],
-      })),
+      ownerId: existing?.ownerId,
+      products: readyProducts.map((p) => {
+        const prior = existing?.products.find((item) => item.id === p.key);
+        return {
+          id: p.key,
+          name: p.name.trim(),
+          price: Number(p.price),
+          desc: p.desc.trim() || "Available for local pickup.",
+          image: prior?.image || CATEGORY_COVER[category],
+        };
+      }),
     };
-    addVendor(vendor);
+
+    if (editing) updateVendor(vendor);
+    else addVendor(vendor);
     navigate({ to: "/vendor/$id", params: { id: vendor.id } });
   }
 
@@ -126,15 +186,54 @@ function CreatePorch() {
     setProducts((list) => list.map((item) => (item.key === key ? { ...item, ...patch } : item)));
   }
 
+  if (!ready) {
+    return (
+      <Shell>
+        <p className="pt-16 text-muted">Opening your porch…</p>
+      </Shell>
+    );
+  }
+
+  if (denied) {
+    return (
+      <Shell>
+        <div className="max-w-lg pt-12">
+          <h1 className="font-display text-4xl text-ink">This porch isn’t yours to edit.</h1>
+          <p className="mt-3 text-muted">
+            Edit stays on the device that opened the listing. You can still browse, or start a new
+            porch here.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link to="/" className="inline-flex min-h-11 items-center text-sm font-medium text-porch">
+              Back to the market
+            </Link>
+            <Link
+              to="/create"
+              search={{}}
+              className="inline-flex min-h-11 items-center rounded-full bg-porch px-4 text-sm font-medium text-paper"
+            >
+              Open a new porch
+            </Link>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
   return (
     <Shell>
-      <div className="grid items-start gap-8 pt-8 md:grid-cols-[1.1fr_0.9fr] md:pt-12">
+      <div className="grid items-start gap-8 pt-6 md:grid-cols-[1.1fr_0.9fr] md:pt-10">
         <div>
-          <p className="text-sm font-medium tracking-wide text-porch">Free · no account</p>
-          <h1 className="mt-2 font-display text-4xl text-ink sm:text-5xl">Open your porch</h1>
+          <p className="text-sm font-medium tracking-wide text-porch">
+            {editing ? "This device · your listing" : "Free · no account"}
+          </p>
+          <h1 className="mt-2 font-display text-4xl text-ink sm:text-5xl">
+            {editing ? "Edit your porch" : "Open your porch"}
+          </h1>
           <p className="mt-3 max-w-xl text-muted">
-            This stays in the browser you’re using. Neighbors on another phone won’t see it until
-            accounts exist — good enough to try the page, the products, and a pickup hold.
+            {editing
+              ? "Change the name, pickup notes, or what’s for sale. Neighbors on this phone keep the same porch."
+              : "This stays in the browser you’re using. Add what you bake, then neighbors can ask you to hold a box."}
           </p>
 
           <form onSubmit={submit} className="mt-8" noValidate>
@@ -196,21 +295,16 @@ function CreatePorch() {
                 required
               />
             </Field>
-            <Field label="Cover photo">
+            <Field label="Cover photo (optional)">
               <input
                 className={`${field} file:mr-3 file:rounded-full file:border-0 file:bg-foam file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink`}
                 type="file"
                 accept="image/*"
                 onChange={(e) => onPhoto(e.target.files?.[0])}
               />
-              <input
-                className={field}
-                type="url"
-                inputMode="url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="Or paste an image link"
-              />
+              <p className="mt-1.5 text-xs text-muted">
+                Stored on this device. Skip it and we’ll use a kitchen photo that ships with the app.
+              </p>
               {photoNote && <p className="mt-2 text-sm text-mango">{photoNote}</p>}
               {busy && <p className="mt-2 text-sm text-muted">Sizing that photo…</p>}
             </Field>
@@ -282,7 +376,7 @@ function CreatePorch() {
               disabled={busy}
               className="mt-8 inline-flex min-h-11 items-center rounded-full bg-porch px-6 text-sm font-medium text-paper hover:bg-porch-deep disabled:opacity-60"
             >
-              Create free storefront
+              {editing ? "Save changes" : "Create free storefront"}
             </button>
           </form>
         </div>
@@ -290,7 +384,7 @@ function CreatePorch() {
         <aside className="md:sticky md:top-24">
           <p className="text-xs font-medium tracking-wide text-muted uppercase">Preview</p>
           <article className="mt-3 overflow-hidden rounded-2xl border border-line bg-card shadow-card">
-            <Cover src={preview.image} alt="" className="aspect-[16/10]" />
+            <Cover src={preview.image} alt="" lazy={false} className="aspect-[16/10]" />
             <div className="p-4">
               <p className="text-xs font-medium tracking-wide text-porch uppercase">{preview.category}</p>
               <h2 className="mt-1 font-display text-2xl text-ink">{preview.name}</h2>
@@ -298,16 +392,17 @@ function CreatePorch() {
               <p className="mt-3 text-sm text-ink">{preview.bio}</p>
               <p className="mt-2 text-sm text-muted">{preview.pickup}</p>
               <ul className="mt-4 space-y-2 border-t border-line pt-3">
-                {(preview.products.length ? preview.products : [{ id: "empty", name: "First product", price: 0, desc: "", image: "" }]).map(
-                  (product) => (
-                    <li key={product.id} className="flex items-baseline justify-between gap-3 text-sm">
-                      <span>{product.name}</span>
-                      <span className="font-medium text-mango tabular-nums">
-                        {product.price > 0 ? money(product.price) : "—"}
-                      </span>
-                    </li>
-                  ),
-                )}
+                {(preview.products.length
+                  ? preview.products
+                  : [{ id: "empty", name: "First product", price: 0, desc: "", image: "" }]
+                ).map((product) => (
+                  <li key={product.id} className="flex items-baseline justify-between gap-3 text-sm">
+                    <span>{product.name}</span>
+                    <span className="font-medium text-mango tabular-nums">
+                      {product.price > 0 ? money(product.price) : "—"}
+                    </span>
+                  </li>
+                ))}
               </ul>
             </div>
           </article>
