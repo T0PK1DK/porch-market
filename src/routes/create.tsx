@@ -251,7 +251,6 @@ function CreatePorch() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Bayfront Sourdough"
                 aria-invalid={Boolean(errorFor("name"))}
-                required
               />
             </Field>
             <Field label="Where’s the porch?" error={errorFor("location")}>
@@ -261,7 +260,6 @@ function CreatePorch() {
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Miami Beach, FL"
                 aria-invalid={Boolean(errorFor("location"))}
-                required
               />
             </Field>
             <Field label="Category">
@@ -283,7 +281,6 @@ function CreatePorch() {
                 onChange={(e) => setBio(e.target.value)}
                 placeholder="What you make, and anything a neighbor should know."
                 aria-invalid={Boolean(errorFor("bio"))}
-                required
               />
             </Field>
             <Field label="Pickup" error={errorFor("pickup")}>
@@ -293,7 +290,6 @@ function CreatePorch() {
                 onChange={(e) => setPickup(e.target.value)}
                 placeholder="Saturdays, 9am–noon, front porch"
                 aria-invalid={Boolean(errorFor("pickup"))}
-                required
               />
             </Field>
             <Field label="Cover photo (optional)">
