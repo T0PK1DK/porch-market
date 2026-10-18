@@ -20,7 +20,7 @@ Stacked feature pass on PR #2 (`cursor/porch-market-phone-polish-9af7`). Still n
 
 ## Deploy
 
-Live test link: https://porch.testdasite.com (Cloudflare Worker `porch-market`, fallback https://porch-market.t0pk1dk.workers.dev — check the exact workers.dev subdomain in the dashboard if it differs).
+Live test link: https://porch.testdasite.com (Cloudflare Worker `porch-market`, deployed Oct 18, 2026 from f7844cf). The Worker also answers on the account's workers.dev subdomain, but that name includes the account owner's name: never share or commit it; use porch.testdasite.com.
 
 Cloudflare (current):
 
