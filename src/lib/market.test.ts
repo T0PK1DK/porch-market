@@ -21,6 +21,9 @@ import {
   saveVendors,
   thisWeeksFood,
   updateVendor,
+  validatePorchDraft,
+  formatPriceInput,
+  parsePrice,
   VENDORS_KEY,
   type Hold,
   type Vendor,
@@ -309,5 +312,50 @@ describe("ownership and weekly food", () => {
   it("does not persist a vendors list that is only samples", () => {
     saveVendors(SAMPLE_VENDORS);
     assert.equal(localStorage.getItem(VENDORS_KEY), null);
+  });
+});
+
+describe("price and porch form validation", () => {
+  it("parses dollar amounts and rejects junk", () => {
+    assert.equal(parsePrice("12"), 12);
+    assert.equal(parsePrice("$8.50"), 8.5);
+    assert.equal(parsePrice("  $ 4  "), 4);
+    assert.equal(parsePrice("0"), 0);
+    assert.equal(parsePrice(""), null);
+    assert.equal(parsePrice("-3"), null);
+    assert.equal(parsePrice("12.999"), null);
+    assert.equal(parsePrice("twelve"), null);
+    assert.equal(formatPriceInput("$8.5"), "8.50");
+    assert.equal(formatPriceInput("12"), "12");
+  });
+
+  it("requires a kitchen name and pickup window", () => {
+    const errors = validatePorchDraft({
+      name: "  ",
+      location: "Miami Beach, FL",
+      pickup: "",
+      bio: "Weekend loaves.",
+      products: [{ key: "p1", name: "Loaf", price: "12", desc: "" }],
+    });
+    assert.deepEqual(
+      errors.map((e) => e.field),
+      ["name", "pickup"],
+    );
+  });
+
+  it("requires a parseable price on each listed product", () => {
+    const errors = validatePorchDraft({
+      name: "Lime Loaf",
+      location: "Little Haiti, FL",
+      pickup: "Saturdays",
+      bio: "One loaf.",
+      products: [
+        { key: "p1", name: "Loaf", price: "$11", desc: "" },
+        { key: "p2", name: "Cookies", price: "free", desc: "" },
+      ],
+    });
+    assert.equal(errors.length, 1);
+    assert.equal(errors[0].field, "price:p2");
+    assert.match(errors[0].message, /8\.50/);
   });
 });

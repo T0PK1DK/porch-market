@@ -252,6 +252,62 @@ export function money(amount: number): string {
   }).format(amount);
 }
 
+export function parsePrice(raw: string): number | null {
+  const cleaned = raw.trim().replace(/^\s*\$\s*/, "").replace(/\s/g, "");
+  if (!cleaned) return null;
+  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
+  const amount = Number(cleaned);
+  if (!Number.isFinite(amount) || amount < 0) return null;
+  return Math.round(amount * 100) / 100;
+}
+
+export function formatPriceInput(raw: string): string {
+  const amount = parsePrice(raw);
+  if (amount === null) return raw.trim();
+  return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+}
+
+export type FieldError = {
+  field: string;
+  message: string;
+};
+
+export type PorchDraft = {
+  name: string;
+  location: string;
+  pickup: string;
+  bio: string;
+  products: { key: string; name: string; price: string; desc: string }[];
+};
+
+export function validatePorchDraft(draft: PorchDraft): FieldError[] {
+  const errors: FieldError[] = [];
+  if (!draft.name.trim()) errors.push({ field: "name", message: "Give the kitchen a name." });
+  if (!draft.location.trim()) errors.push({ field: "location", message: "Say where the porch is." });
+  if (!draft.pickup.trim()) errors.push({ field: "pickup", message: "Add a pickup window." });
+  if (!draft.bio.trim()) errors.push({ field: "bio", message: "Write a short bio." });
+
+  const ready = draft.products.filter((p) => p.name.trim() || p.price.trim() || p.desc.trim());
+  if (ready.length === 0) {
+    errors.push({ field: "products", message: "Add at least one product." });
+    return errors;
+  }
+
+  for (const product of ready) {
+    if (!product.name.trim()) {
+      errors.push({ field: `name:${product.key}`, message: "Every product needs a name." });
+    }
+    if (parsePrice(product.price) === null) {
+      const label = product.name.trim() || "this product";
+      errors.push({
+        field: `price:${product.key}`,
+        message: `Add a price like 12 or 8.50 for ${label}.`,
+      });
+    }
+  }
+  return errors;
+}
+
 export function fromPrice(vendor: Vendor): number {
   if (!vendor.products.length) return 0;
   return Math.min(...vendor.products.map((p) => p.price));
