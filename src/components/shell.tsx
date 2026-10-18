@@ -7,7 +7,7 @@ function NavLink({
   exact,
   children,
 }: {
-  to: "/" | "/create";
+  to: "/" | "/create" | "/feed";
   exact?: boolean;
   children: ReactNode;
 }) {
@@ -49,6 +49,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <NavLink to="/" exact>
               Browse
             </NavLink>
+            <NavLink to="/feed">Feed</NavLink>
             <Link
               to="/create"
               search={{}}

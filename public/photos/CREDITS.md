@@ -30,6 +30,11 @@ None are hotlinked at runtime. Each file is under 80KB.
 | `peppers.webp` | Red chile | Same capture as `hot-sauce.webp` | Unsplash License |
 | `mojo.webp` | Sour oranges | Unsplash `photo-1611080626919-7cf5a9dbab5b` | Unsplash License |
 | `market.webp` | Market produce | [Pexels 1300972](https://www.pexels.com/photo/1300972/) | Pexels License |
+| `hot-meal.webp` | Bowl of tomato soup | Unsplash `photo-1547592166-23ac45744acd` | Unsplash License |
+| `rice.webp` | Rice skillet | Unsplash `photo-1512058564366-18510be2db19` | Unsplash License |
+| `salad.webp` | Cold garden bowl | Unsplash `photo-1512621776951-a57141f2eefd` | Unsplash License |
+| `meal-prep.webp` | Quinoa and vegetables | [Pexels 1640777](https://www.pexels.com/photo/1640777/) | Pexels License |
+| `stew.webp` | Coconut curry bowl | Unsplash `photo-1455619452474-d2be8b1e70cd` | Unsplash License |
 
 Every Unsplash still was visually checked after download. A few Unsplash IDs
 resolve to unrelated subjects, so those files were replaced with a verified

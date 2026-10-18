@@ -1,17 +1,28 @@
 import { beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  addFeedPost,
   addProduct,
   addVendor,
   CATEGORY_COVER,
+  EXAMPLE_FEED,
+  FEED_KEY,
   getDeviceOwnerId,
   HOLDS_KEY,
   isOwnedByThisDevice,
+  loadFeed,
   loadHolds,
   loadVendors,
   localizeImage,
+  migrateCategory,
   migrateVendors,
+  normalizeCashApp,
+  normalizePaypal,
+  normalizeVenmo,
+  normalizeZelle,
   OWNER_KEY,
+  parsePaymentHandles,
+  paymentLinks,
   PHOTO,
   removeHold,
   removeProduct,
@@ -22,6 +33,8 @@ import {
   thisWeeksFood,
   updateVendor,
   validatePorchDraft,
+  vendorHasCommunityKitchen,
+  vendorMatchesFilter,
   formatPriceInput,
   parsePrice,
   VENDORS_KEY,
@@ -63,7 +76,7 @@ function customPorch(overrides: Partial<Vendor> = {}): Vendor {
     id: "custom-lime-loaf-old",
     name: "Lime Loaf",
     location: "Little Haiti, FL",
-    category: "Baked Goods",
+    category: "Baked",
     bio: "One loaf, Saturday only.",
     image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=1200&q=80",
     pickup: "Saturdays, 10am",
@@ -74,6 +87,7 @@ function customPorch(overrides: Partial<Vendor> = {}): Vendor {
         price: 11,
         desc: "Zest and sugar.",
         image: "https://images.unsplash.com/photo-1549931319-a545dcf3bc73?w=800",
+        category: "Baked",
       },
     ],
     ...overrides,
@@ -151,6 +165,7 @@ describe("data migration", () => {
           price: 11,
           desc: "Zest.",
           image: "data:image/jpeg;base64,aaa",
+          category: "Baked",
         },
       ],
     });
@@ -207,7 +222,8 @@ describe("add and remove products", () => {
       name: "Lime cookies",
       price: 8,
       desc: "Half dozen.",
-      image: CATEGORY_COVER["Baked Goods"],
+      image: CATEGORY_COVER.Baked,
+      category: "Baked",
     });
     const vendor = next.find((v) => v.id === "custom-lime-loaf-old");
     assert.ok(vendor);
@@ -221,8 +237,8 @@ describe("add and remove products", () => {
       customPorch({
         image: PHOTO.bread,
         products: [
-          { id: "loaf", name: "Lime loaf", price: 11, desc: "", image: PHOTO.sourdough },
-          { id: "cookies", name: "Lime cookies", price: 8, desc: "", image: PHOTO.cookies },
+          { id: "loaf", name: "Lime loaf", price: 11, desc: "", image: PHOTO.sourdough, category: "Baked" },
+          { id: "cookies", name: "Lime cookies", price: 8, desc: "", image: PHOTO.cookies, category: "Baked" },
         ],
       }),
     );
@@ -247,6 +263,7 @@ describe("add and remove products", () => {
       price: 1,
       desc: "",
       image: PHOTO.bread,
+      category: "Baked",
     });
     removeProduct(sampleId, before.products[0].id);
     const after = loadVendors().find((v) => v.id === sampleId)!;
@@ -335,7 +352,7 @@ describe("price and porch form validation", () => {
       location: "Miami Beach, FL",
       pickup: "",
       bio: "Weekend loaves.",
-      products: [{ key: "p1", name: "Loaf", price: "12", desc: "" }],
+      products: [{ key: "p1", name: "Loaf", price: "12", desc: "", category: "Baked" }],
     });
     assert.deepEqual(
       errors.map((e) => e.field),
@@ -350,12 +367,232 @@ describe("price and porch form validation", () => {
       pickup: "Saturdays",
       bio: "One loaf.",
       products: [
-        { key: "p1", name: "Loaf", price: "$11", desc: "" },
-        { key: "p2", name: "Cookies", price: "free", desc: "" },
+        { key: "p1", name: "Loaf", price: "$11", desc: "", category: "Baked" },
+        { key: "p2", name: "Cookies", price: "free", desc: "", category: "Baked" },
       ],
     });
     assert.equal(errors.length, 1);
     assert.equal(errors[0].field, "price:p2");
     assert.match(errors[0].message, /8\.50/);
+  });
+});
+
+describe("category migration", () => {
+  it("maps old kitchen labels to the closest new category", () => {
+    assert.equal(migrateCategory("Baked Goods"), "Baked");
+    assert.equal(migrateCategory("Honey & Preserves"), "Fresh");
+    assert.equal(migrateCategory("Produce & Eggs"), "Farm");
+    assert.equal(migrateCategory("Hot Sauce & Condiments"), "Fresh");
+    assert.equal(migrateCategory("Other Cottage Food"), "Fresh");
+    assert.equal(migrateCategory("Hot meals"), "Hot meals");
+    assert.equal(migrateCategory("unknown shelf"), "Fresh");
+  });
+
+  it("migrates stored porches and products without dropping them", () => {
+    const stored = [
+      {
+        id: "custom-old-honey",
+        name: "Jar Porch",
+        location: "Homestead, FL",
+        category: "Honey & Preserves",
+        bio: "Jars.",
+        image: PHOTO.honey,
+        pickup: "Sundays",
+        products: [
+          { id: "honey", name: "Wildflower", price: 14, desc: "", image: PHOTO.honey },
+          { id: "loaf", name: "Side loaf", price: 10, desc: "", image: PHOTO.bread, category: "Baked Goods" },
+        ],
+        ownerId: "owner-keep",
+      },
+    ];
+    localStorage.setItem(OWNER_KEY, "owner-keep");
+    const { vendors, changed } = migrateVendors(stored, "owner-keep");
+    assert.equal(changed, true);
+    assert.equal(vendors.length, 1);
+    assert.equal(vendors[0].name, "Jar Porch");
+    assert.equal(vendors[0].category, "Fresh");
+    assert.equal(vendors[0].products.length, 2);
+    assert.equal(vendors[0].products[0].category, "Fresh");
+    assert.equal(vendors[0].products[1].category, "Baked");
+    assert.equal(vendors[0].products[0].name, "Wildflower");
+    assert.equal(vendors[0].ownerId, "owner-keep");
+  });
+});
+
+describe("community kitchen flags", () => {
+  it("keeps free, pay-what-you-can, and donation-backed marks", () => {
+    const stored = [
+      {
+        id: "custom-table",
+        name: "Block Table",
+        location: "Little Haiti, FL",
+        category: "Hot meals",
+        bio: "Plates for the block.",
+        image: PHOTO.hotMeal,
+        pickup: "Evenings",
+        ownerId: "owner-keep",
+        products: [
+          {
+            id: "soup",
+            name: "Soup",
+            price: 0,
+            desc: "",
+            image: PHOTO.hotMeal,
+            category: "Hot meals",
+            communityOffer: "Free",
+          },
+        ],
+      },
+    ];
+    const { vendors } = migrateVendors(stored, "owner-keep");
+    assert.equal(vendors[0].products[0].communityOffer, "Free");
+    assert.equal(vendorHasCommunityKitchen(vendors[0]), true);
+    assert.equal(vendorMatchesFilter(vendors[0], "Community kitchen"), true);
+    assert.equal(vendorMatchesFilter(SAMPLE_VENDORS[0], "Community kitchen"), false);
+    assert.equal(vendorMatchesFilter(SAMPLE_VENDORS.find((v) => v.id === "little-haiti-table")!, "Community kitchen"), true);
+  });
+
+  it("lets a free plate skip a dollar price", () => {
+    const errors = validatePorchDraft({
+      name: "Block Table",
+      location: "Little Haiti, FL",
+      pickup: "Evenings",
+      bio: "Plates for the block.",
+      products: [
+        {
+          key: "soup",
+          name: "Soup",
+          price: "",
+          desc: "A cup at the door.",
+          category: "Hot meals",
+          communityOffer: "Free",
+        },
+      ],
+    });
+    assert.deepEqual(errors, []);
+  });
+
+  it("drops an unknown community mark instead of inventing one", () => {
+    const { vendors } = migrateVendors(
+      [
+        {
+          id: "custom-plain",
+          name: "Plain",
+          location: "Miami, FL",
+          category: "Baked",
+          bio: "Loaves.",
+          image: PHOTO.bread,
+          pickup: "Saturdays",
+          products: [
+            {
+              id: "loaf",
+              name: "Loaf",
+              price: 10,
+              desc: "",
+              image: PHOTO.bread,
+              category: "Baked",
+              communityOffer: "Half off",
+            },
+          ],
+        },
+      ],
+      "owner-x",
+    );
+    assert.equal(vendors[0].products[0].communityOffer, undefined);
+    assert.equal(vendorHasCommunityKitchen(vendors[0]), false);
+  });
+});
+
+describe("payment handle validation", () => {
+  it("accepts real handle shapes and rejects junk", () => {
+    assert.equal(normalizeCashApp("$Kitchen"), "$Kitchen");
+    assert.equal(normalizeCashApp("kitchen"), "$kitchen");
+    assert.equal(normalizeCashApp(""), "");
+    assert.equal(normalizeCashApp("$"), null);
+    assert.equal(normalizeCashApp("1bad"), null);
+
+    assert.equal(normalizeVenmo("@porchkitchen"), "porchkitchen");
+    assert.equal(normalizeVenmo("https://venmo.com/porchkitchen"), "porchkitchen");
+    assert.equal(normalizeVenmo("ab"), null);
+
+    assert.equal(normalizePaypal("paypal.me/PorchKitchen"), "https://www.paypal.me/PorchKitchen");
+    assert.equal(normalizePaypal("https://www.paypal.me/PorchKitchen"), "https://www.paypal.me/PorchKitchen");
+    assert.equal(normalizePaypal("not-a-paypal-link"), null);
+
+    assert.equal(normalizeZelle("Alex at 305-555-0142"), "Alex at 305-555-0142");
+    assert.equal(normalizeZelle("https://zelle.example/pay"), null);
+    assert.equal(normalizeZelle(""), "");
+  });
+
+  it("never invents handles that were not entered", () => {
+    const parsed = parsePaymentHandles({ cashApp: "", venmo: "", paypal: "", zelle: "" });
+    assert.deepEqual(parsed.handles, {});
+    assert.deepEqual(parsed.errors, []);
+    assert.deepEqual(paymentLinks(undefined), []);
+    assert.deepEqual(paymentLinks({}), []);
+  });
+
+  it("keeps valid handles on a porch and drops invalid stored ones", () => {
+    localStorage.setItem(OWNER_KEY, "owner-pay");
+    addVendor({
+      ...customPorch({ image: PHOTO.bread }),
+      payments: {
+        cashApp: "$LimeLoaf",
+        venmo: "limeloaf",
+        paypal: "paypal.me/LimeLoaf",
+        zelle: "Lime Loaf porch",
+      },
+    });
+    const mine = loadVendors().find((v) => v.id === "custom-lime-loaf-old");
+    assert.deepEqual(mine?.payments, {
+      cashApp: "$LimeLoaf",
+      venmo: "limeloaf",
+      paypal: "https://www.paypal.me/LimeLoaf",
+      zelle: "Lime Loaf porch",
+    });
+    assert.equal(paymentLinks(mine?.payments).length, 4);
+
+    const { vendors } = migrateVendors(
+      [{ ...customPorch({ image: PHOTO.bread }), payments: { cashApp: "$$", venmo: "x", paypal: "venmo.com/nope" } }],
+      "owner-pay",
+    );
+    assert.equal(vendors[0].payments, undefined);
+  });
+});
+
+describe("feed storage", () => {
+  it("seeds example posts on an empty device and marks them as examples", () => {
+    const posts = loadFeed();
+    assert.ok(posts.length >= 3);
+    assert.ok(posts.every((post) => post.example === true));
+    assert.ok(posts.some((post) => post.text.includes("Fresh sourdough")));
+    assert.equal(localStorage.getItem(FEED_KEY), null);
+    assert.equal(EXAMPLE_FEED[0].example, true);
+  });
+
+  it("stores a maker post on this device only after they own a porch", () => {
+    const refused = addFeedPost({
+      vendorId: "bayfront-sourdough",
+      vendorName: "Bayfront Sourdough",
+      text: "Should not land",
+    });
+    assert.ok(refused.every((post) => post.example));
+
+    addVendor(customPorch({ image: PHOTO.bread }));
+    const next = addFeedPost({
+      vendorId: "custom-lime-loaf-old",
+      vendorName: "Lime Loaf",
+      text: "  Lime loaf at 4pm  ",
+      image: "data:image/jpeg;base64,abc",
+    });
+    assert.equal(next[0].text, "Lime loaf at 4pm");
+    assert.equal(next[0].vendorId, "custom-lime-loaf-old");
+    assert.equal(next[0].example, undefined);
+    assert.equal(next[0].image, "data:image/jpeg;base64,abc");
+    assert.ok(next.some((post) => post.example));
+
+    const persisted = JSON.parse(localStorage.getItem(FEED_KEY) ?? "[]");
+    assert.equal(persisted[0].text, "Lime loaf at 4pm");
+    assert.equal(loadFeed()[0].text, "Lime loaf at 4pm");
   });
 });

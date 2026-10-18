@@ -1,38 +1,36 @@
 # Porch Market handoff
 
-Phone-first market is in. Overnight polish is on a follow-up PR: empty filters, hold confirm/cancel, form validation, tap targets, and photo layout shift.
+Stacked feature pass on PR #2 (`cursor/porch-market-phone-polish-9af7`). Still no backend, accounts, Stripe, paid maps, or image APIs.
 
 ## Done
 
-- Home is intro + search + chips + this-week food + porch cards. No tall poster.
-- Photos ship in `public/photos/` (WebP, under 80KB) with `CREDITS.md`. No runtime hotlinks.
-- Device-owned porches can be edited. Holds are a name on a box, paid at the door.
-- Empty search/chip results hide the weekly row and offer **Clear filters**.
-- After a hold: a clear “Held for …” card with **Cancel this hold**. Inline cancel is a 44px target.
-- Create/edit validate name, pickup, and prices (`$12`, `8.50`). `$12` used to fail.
-- Covers reserve their box (`aspect-ratio` / fixed size, `img` is `block`) so photos don’t shove the list.
-- Store tests: `src/lib/market.test.ts` (edit, products, hold, migration, price/form validation).
+- Category chips are Farm, Fresh, Baked, Hot meals, Cold meals, Meal prep. Makers pick a category on each product. Old labels migrate (Baked Goods → Baked, produce → Farm, honey/sauce → Fresh).
+- Community kitchen: an item can be Free, Pay what you can, or Donation-backed. Gentle badge + a Community kitchen chip. Copy stays dignified.
+- Makers can add their own Cash App, Venmo, PayPal.me, or Zelle note. Shown on the porch and after a hold as “pay the maker directly.” Holds stay paid at pickup. Handles are validated and never invented.
+- Feed tab: short porch updates, optional photo resized on this device, example posts marked Example. Tap a post to open the porch. Posts are local only.
+- `docs/ROADMAP.md` for a later shared feed, real payments, and meal kitchens.
+- New bundled photos for meals + prep in `public/photos/` with credits.
 
 ## Verify
 
-- `npx tsc --noEmit` — pass
-- `node --experimental-strip-types --test src/lib/market.test.ts` — 17 pass
-- `npm run build` — pass
-- Phone QA ~375–430px: empty Other Cottage Food chip, hold + cancel, create validation
-- Platform `scripts/**/*.test.mjs` still expects `.grok/skills/og/**` (not in this repo)
+- `npx tsc --noEmit`
+- `node --experimental-strip-types --test src/lib/market.test.ts` — category migration, community flags, payment handles, feed storage
+- `npm run build`
+- Phone ~390px: market chips, a porch with handles (create one — samples have none), Feed tab
 
 ## Deploy
 
-`vercel.json` (`npm install --omit=dev`). TanStack Start → Vercel (`.vercel/output`). No GitHub Actions. Connecting the GitHub repo to Vercel deploys `main`.
+`vercel.json` (`npm install --omit=dev`). Connecting the GitHub repo to Vercel deploys `main`. This branch is stacked on #2 — do not merge onto `main` until #2 is in.
 
 ## Watch
 
-- Don’t add Stripe, accounts, maps, or image CDNs.
-- Sample kitchens are not editable. Only `ownerId` matching this device.
-- Don’t re-download Unsplash IDs blindly — some resolve to the wrong subject.
-- Removing the last product is refused.
+- Do not add Stripe, accounts, maps, or image CDNs.
+- Do not invent payment handles on sample kitchens.
+- Sample porches are not editable. Feed posts only from a porch this device owns.
+- Community kitchen is a badge, not a donation network.
 
 ## Next (optional)
 
-- Distinct photos for focaccia vs country loaf, and lime shortbread vs chocolate chip.
-- Cross-phone sync would need accounts — out of scope on purpose.
+- Distinct photos for focaccia vs country loaf if King still wants that.
+- A kitchen-only “plates we can cover this week” count, still local.
+- Cross-phone sync needs accounts — see `docs/ROADMAP.md`.

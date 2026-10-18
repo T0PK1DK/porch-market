@@ -5,11 +5,13 @@ import { Shell } from "@/components/shell";
 import { VendorCard, WeekFoodCard } from "@/components/vendor-card";
 import {
   CATEGORIES,
+  COMMUNITY_FILTER,
   isOwnedByThisDevice,
   loadVendors,
   SAMPLE_VENDORS,
   thisWeeksFood,
-  type Category,
+  vendorMatchesFilter,
+  type MarketFilter,
   type Vendor,
 } from "@/lib/market";
 
@@ -29,7 +31,7 @@ const STEPS = [
   {
     n: "02",
     title: "Neighbors browse",
-    body: "People nearby filter by bread, honey, eggs, heat — whatever they want this week.",
+    body: "People nearby filter by farm, fresh, baked, or a meal from the community kitchen.",
   },
   {
     n: "03",
@@ -41,32 +43,18 @@ const STEPS = [
 function Home() {
   const [vendors, setVendors] = useState<Vendor[]>(SAMPLE_VENDORS);
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<Category | "All">("All");
+  const [category, setCategory] = useState<MarketFilter>("All");
 
   useEffect(() => {
     setVendors(loadVendors());
   }, []);
 
-  const shown = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return vendors.filter((vendor) => {
-      if (category !== "All" && vendor.category !== category) return false;
-      if (!q) return true;
-      const haystack = [
-        vendor.name,
-        vendor.location,
-        vendor.category,
-        vendor.bio,
-        vendor.pickup,
-        ...vendor.products.map((p) => `${p.name} ${p.desc}`),
-      ]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [vendors, query, category]);
+  const shown = useMemo(
+    () => vendors.filter((vendor) => vendorMatchesFilter(vendor, category, query)),
+    [vendors, query, category],
+  );
 
-  const weekly = useMemo(() => thisWeeksFood(shown), [shown]);
+  const weekly = useMemo(() => thisWeeksFood(shown, category), [shown, category]);
   const filtering = query.trim().length > 0 || category !== "All";
 
   function clearFilters() {
@@ -109,6 +97,9 @@ function Home() {
             {item}
           </FilterChip>
         ))}
+        <FilterChip on={category === COMMUNITY_FILTER} onClick={() => setCategory(COMMUNITY_FILTER)}>
+          {COMMUNITY_FILTER}
+        </FilterChip>
       </div>
 
       {weekly.length > 0 && (
@@ -143,9 +134,11 @@ function Home() {
                 ? `No porches match “${query.trim()}” in ${category}.`
                 : query.trim()
                   ? `No porches match “${query.trim()}”.`
-                  : category !== "All"
-                    ? `No ${category.toLowerCase()} porches right now.`
-                    : "Try another kitchen, or open yours."}
+                  : category === COMMUNITY_FILTER
+                    ? "No community kitchen plates on this phone right now."
+                    : category !== "All"
+                      ? `No ${category.toLowerCase()} porches right now.`
+                      : "Try another kitchen, or open yours."}
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               {filtering ? (
