@@ -2,16 +2,18 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Clock, MapPin, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Shell } from "@/components/shell";
-import { Cover } from "@/components/vendor-card";
+import { CommunityBadge, Cover, PayMakerLinks } from "@/components/vendor-card";
 import {
   isOwnedByThisDevice,
   loadHolds,
   loadVendors,
-  money,
+  paymentLinks,
+  priceLabel,
   removeHold,
   removeVendor,
   SAMPLE_VENDORS,
   saveHold,
+  vendorHasCommunityKitchen,
   type Hold,
   type Vendor,
 } from "@/lib/market";
@@ -123,6 +125,13 @@ function Storefront() {
         <div className="mt-5 grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
           <div>
             <p className="text-xs font-medium tracking-wide text-porch uppercase">{vendor.category}</p>
+            {vendorHasCommunityKitchen(vendor) ? (
+              <p className="mt-2">
+                <span className="inline-flex items-center rounded-full bg-foam px-2.5 py-1 text-xs font-medium text-porch">
+                  Community kitchen
+                </span>
+              </p>
+            ) : null}
             <h1 className="mt-2 font-display text-4xl text-ink sm:text-5xl">{vendor.name}</h1>
             <p className="mt-3 flex items-center gap-1.5 text-muted">
               <MapPin className="size-4" aria-hidden="true" />
@@ -136,8 +145,14 @@ function Storefront() {
               {vendor.pickup}
             </p>
             <p className="mt-3 text-sm text-muted">
-              A hold is a name on a box. Pay at the door — nothing is charged here.
+              A hold is a name on a box. Pay at pickup — nothing is charged here.
             </p>
+            {vendorHasCommunityKitchen(vendor) ? (
+              <p className="mt-3 text-sm text-muted">
+                Some plates here are free, pay what you can, or already covered by a neighbor.
+              </p>
+            ) : null}
+            <PayMakerLinks links={paymentLinks(vendor.payments)} />
             {mine && (
               <div className="mt-4 flex flex-col items-start gap-2">
                 <Link
@@ -172,8 +187,9 @@ function Storefront() {
             <p className="font-medium">Held for {lastHold.buyerName}</p>
             <p className="mt-1 text-sm">
               {lastHold.productName}
-              {lastHold.note ? ` — ${lastHold.note}` : ""}. A name on a box — pay at the door.
+              {lastHold.note ? ` — ${lastHold.note}` : ""}. A name on a box — pay at pickup.
             </p>
+            <PayMakerLinks links={paymentLinks(vendor.payments)} compact />
             <button
               type="button"
               className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-porch hover:underline"
@@ -208,8 +224,9 @@ function Storefront() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <h3 className="font-display text-xl text-ink">{product.name}</h3>
-                      <p className="font-medium text-mango tabular-nums">{money(product.price)}</p>
+                      <p className="font-medium text-mango tabular-nums">{priceLabel(product)}</p>
                     </div>
+                    <CommunityBadge offer={product.communityOffer} />
                     <p className="mt-1 text-sm text-muted">{product.desc}</p>
                     <button
                       type="button"

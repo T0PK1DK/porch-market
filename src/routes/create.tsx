@@ -2,25 +2,34 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Shell } from "@/components/shell";
-import { Cover } from "@/components/vendor-card";
 import {
   addVendor,
   CATEGORIES,
   CATEGORY_COVER,
+  COMMUNITY_KITCHEN_OFFERS,
+  emptyPaymentDraft,
   formatPriceInput,
+  isCommunityOffer,
   isOwnedByThisDevice,
   loadVendors,
-  money,
+  parsePaymentHandles,
   parsePrice,
+  paymentDraftFrom,
+  paymentLinks,
+  priceLabel,
   resizeImage,
   safeImage,
   slugId,
   updateVendor,
   validatePorchDraft,
   type Category,
+  type CommunityKitchenOffer,
+  type DraftProduct,
   type FieldError,
+  type PaymentDraft,
   type Vendor,
 } from "@/lib/market";
+import { CommunityBadge, Cover, PayMakerLinks } from "@/components/vendor-card";
 
 type CreateSearch = {
   edit?: string;
@@ -40,7 +49,9 @@ export const Route = createFileRoute("/create")({
   component: CreatePorch,
 });
 
-type DraftProduct = { key: string; name: string; price: string; desc: string };
+function blankProduct(category: Category): DraftProduct {
+  return { key: `p-${Date.now().toString(36)}`, name: "", price: "", desc: "", category };
+}
 
 const field =
   "mt-1.5 w-full rounded-xl border border-line bg-card px-3 py-3 text-base text-ink outline-none placeholder:text-muted focus:border-porch";
@@ -52,14 +63,15 @@ function CreatePorch() {
   const [denied, setDenied] = useState(false);
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
-  const [category, setCategory] = useState<Category>("Baked Goods");
+  const [category, setCategory] = useState<Category>("Baked");
+  const [payments, setPayments] = useState<PaymentDraft>(emptyPaymentDraft());
   const [bio, setBio] = useState("");
   const [pickup, setPickup] = useState("");
   const [photo, setPhoto] = useState("");
   const [existingImage, setExistingImage] = useState("");
   const [existingId, setExistingId] = useState<string | null>(null);
   const [products, setProducts] = useState<DraftProduct[]>([
-    { key: "p1", name: "", price: "", desc: "" },
+    { key: "p1", name: "", price: "", desc: "", category: "Baked" },
   ]);
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [photoNote, setPhotoNote] = useState("");
@@ -89,15 +101,18 @@ function CreatePorch() {
     setPickup(vendor.pickup);
     setExistingImage(vendor.image);
     setPhoto("");
+    setPayments(paymentDraftFrom(vendor.payments));
     setProducts(
       vendor.products.length
         ? vendor.products.map((product) => ({
             key: product.id,
             name: product.name,
-            price: String(product.price),
+            price: product.communityOffer === "Free" && product.price === 0 ? "" : String(product.price),
             desc: product.desc,
+            category: product.category,
+            communityOffer: product.communityOffer ?? "",
           }))
-        : [{ key: "p1", name: "", price: "", desc: "" }],
+        : [{ key: "p1", name: "", price: "", desc: "", category: vendor.category }],
     );
     setDenied(false);
     setReady(true);
@@ -116,13 +131,19 @@ function CreatePorch() {
     pickup: pickup.trim() || "Pickup window goes here.",
     products: products
       .filter((p) => p.name.trim())
-      .map((p) => ({
-        id: p.key,
-        name: p.name.trim(),
-        price: parsePrice(p.price) ?? 0,
-        desc: p.desc.trim() || "Available for local pickup.",
-        image: CATEGORY_COVER[category],
-      })),
+      .map((p) => {
+        const offer = isCommunityOffer(p.communityOffer) ? p.communityOffer : undefined;
+        return {
+          id: p.key,
+          name: p.name.trim(),
+          price: offer === "Free" ? 0 : (parsePrice(p.price) ?? 0),
+          desc: p.desc.trim() || "Available for local pickup.",
+          image: CATEGORY_COVER[p.category],
+          category: p.category,
+          ...(offer ? { communityOffer: offer } : {}),
+        };
+      }),
+    payments: parsePaymentHandles(payments).handles,
   };
 
   async function onPhoto(file: File | undefined) {
@@ -146,12 +167,13 @@ function CreatePorch() {
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const nextErrors = validatePorchDraft({ name, location, pickup, bio, products });
+    const nextErrors = validatePorchDraft({ name, location, pickup, bio, products, payments });
     setErrors(nextErrors);
     if (nextErrors.length) return;
 
     const readyProducts = products.filter((p) => p.name.trim() || p.price.trim() || p.desc.trim());
     const existing = editing ? loadVendors().find((item) => item.id === existingId) : undefined;
+    const { handles } = parsePaymentHandles(payments);
     const vendor: Vendor = {
       id: existing?.id ?? slugId(name),
       name: name.trim(),
@@ -161,14 +183,18 @@ function CreatePorch() {
       image: cover,
       pickup: pickup.trim(),
       ownerId: existing?.ownerId,
+      payments: handles,
       products: readyProducts.map((p) => {
         const prior = existing?.products.find((item) => item.id === p.key);
+        const offer = isCommunityOffer(p.communityOffer) ? p.communityOffer : undefined;
         return {
           id: p.key,
           name: p.name.trim(),
-          price: parsePrice(p.price) ?? 0,
+          price: offer === "Free" ? 0 : (parsePrice(p.price) ?? 0),
           desc: p.desc.trim() || "Available for local pickup.",
-          image: prior?.image || CATEGORY_COVER[category],
+          image: prior?.image || CATEGORY_COVER[p.category],
+          category: p.category,
+          ...(offer ? { communityOffer: offer } : {}),
         };
       }),
     };
@@ -351,6 +377,40 @@ function CreatePorch() {
                         aria-invalid={Boolean(errorFor(`price:${product.key}`))}
                       />
                     </Field>
+                    <Field label="Category">
+                      <select
+                        className={field}
+                        value={product.category}
+                        onChange={(e) =>
+                          updateProduct(product.key, { category: e.target.value as Category })
+                        }
+                      >
+                        {CATEGORIES.map((item) => (
+                          <option key={item}>{item}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="How neighbors pay for this">
+                      <select
+                        className={field}
+                        value={product.communityOffer ?? ""}
+                        onChange={(e) =>
+                          updateProduct(product.key, {
+                            communityOffer: e.target.value as CommunityKitchenOffer | "",
+                          })
+                        }
+                      >
+                        <option value="">Regular price at pickup</option>
+                        {COMMUNITY_KITCHEN_OFFERS.map((item) => (
+                          <option key={item} value={item}>
+                            {item}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1.5 text-xs font-normal text-muted">
+                        Free, pay what you can, or donation-backed plates show up under Community kitchen.
+                      </p>
+                    </Field>
                     <Field label="Description">
                       <textarea
                         className={field}
@@ -366,16 +426,60 @@ function CreatePorch() {
               <button
                 type="button"
                 className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium text-porch ring-1 ring-line hover:bg-foam"
-                onClick={() =>
-                  setProducts((list) => [
-                    ...list,
-                    { key: `p-${list.length}-${Date.now().toString(36)}`, name: "", price: "", desc: "" },
-                  ])
-                }
+                onClick={() => setProducts((list) => [...list, blankProduct(category)])}
               >
                 <Plus className="size-4" aria-hidden="true" />
                 Add another product
               </button>
+            </div>
+
+            <div className="mt-8 border-t border-line pt-6">
+              <h2 className="font-display text-2xl text-ink">Pay the maker directly</h2>
+              <p className="mt-2 text-sm text-muted">
+                Optional. Holds are still paid at pickup. Add only handles you already use — we won’t invent any.
+              </p>
+              <Field label="Cash App $cashtag" error={errorFor("cashApp")}>
+                <input
+                  className={field}
+                  value={payments.cashApp}
+                  onChange={(e) => setPayments((prev) => ({ ...prev, cashApp: e.target.value }))}
+                  placeholder="$yourcashtag"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  aria-invalid={Boolean(errorFor("cashApp"))}
+                />
+              </Field>
+              <Field label="Venmo username" error={errorFor("venmo")}>
+                <input
+                  className={field}
+                  value={payments.venmo}
+                  onChange={(e) => setPayments((prev) => ({ ...prev, venmo: e.target.value }))}
+                  placeholder="yourname"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  aria-invalid={Boolean(errorFor("venmo"))}
+                />
+              </Field>
+              <Field label="PayPal.me link" error={errorFor("paypal")}>
+                <input
+                  className={field}
+                  value={payments.paypal}
+                  onChange={(e) => setPayments((prev) => ({ ...prev, paypal: e.target.value }))}
+                  placeholder="paypal.me/yourname"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  aria-invalid={Boolean(errorFor("paypal"))}
+                />
+              </Field>
+              <Field label="Zelle note" error={errorFor("zelle")}>
+                <input
+                  className={field}
+                  value={payments.zelle}
+                  onChange={(e) => setPayments((prev) => ({ ...prev, zelle: e.target.value }))}
+                  placeholder="Name, email, or phone they already use"
+                  aria-invalid={Boolean(errorFor("zelle"))}
+                />
+              </Field>
             </div>
 
             <button
@@ -398,15 +502,19 @@ function CreatePorch() {
               <p className="mt-1 text-sm text-muted">{preview.location}</p>
               <p className="mt-3 text-sm text-ink">{preview.bio}</p>
               <p className="mt-2 text-sm text-muted">{preview.pickup}</p>
+              <PayMakerLinks links={paymentLinks(preview.payments)} compact />
               <ul className="mt-4 space-y-2 border-t border-line pt-3">
                 {(preview.products.length
                   ? preview.products
-                  : [{ id: "empty", name: "First product", price: 0, desc: "", image: "" }]
+                  : [{ id: "empty", name: "First product", price: 0, desc: "", image: "", category }]
                 ).map((product) => (
                   <li key={product.id} className="flex items-baseline justify-between gap-3 text-sm">
-                    <span>{product.name}</span>
-                    <span className="font-medium text-mango tabular-nums">
-                      {product.price > 0 ? money(product.price) : "—"}
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate">{product.name}</span>
+                      <CommunityBadge offer={product.communityOffer} />
+                    </span>
+                    <span className="shrink-0 font-medium text-mango tabular-nums">
+                      {priceLabel(product)}
                     </span>
                   </li>
                 ))}

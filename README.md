@@ -6,8 +6,11 @@ Browse nearby porches, open your own, and ask a kitchen to hold something for pi
 
 ## What’s in the app
 
-- Browse with search and category filters
-- Sample South Florida kitchens (sourdough, honey, cookies, eggs, hot sauce)
+- Browse with search and category filters (Farm, Fresh, Baked, meals, meal prep)
+- Community kitchen marks: free, pay what you can, or donation-backed
+- Maker payment handles (Cash App, Venmo, PayPal.me, Zelle) — paid at pickup by default
+- A local porch feed on this device
+- Sample South Florida kitchens, including a community table
 - A storefront with pickup notes and hold requests
 - “Open a porch” with a live preview, saved on this device
 

@@ -1,7 +1,59 @@
 import { Link } from "@tanstack/react-router";
 import { MapPin } from "lucide-react";
 import { useState } from "react";
-import { money, photoSize, type Vendor, type WeekFood } from "@/lib/market";
+import {
+  photoSize,
+  priceLabel,
+  vendorHasCommunityKitchen,
+  type CommunityKitchenOffer,
+  type PaymentLink,
+  type Vendor,
+  type WeekFood,
+} from "@/lib/market";
+
+export function CommunityBadge({ offer }: { offer?: CommunityKitchenOffer }) {
+  if (!offer) return null;
+  return (
+    <span className="inline-flex items-center rounded-full bg-foam px-2 py-0.5 text-[11px] font-medium text-porch">
+      {offer}
+    </span>
+  );
+}
+
+export function PayMakerLinks({
+  links,
+  compact = false,
+}: {
+  links: PaymentLink[];
+  compact?: boolean;
+}) {
+  if (!links.length) return null;
+  return (
+    <div className={compact ? "mt-2" : "mt-3"}>
+      <p className="text-xs font-medium tracking-wide text-muted uppercase">Pay the maker directly</p>
+      <ul className="mt-1.5 flex flex-wrap gap-2">
+        {links.map((link) => (
+          <li key={link.kind}>
+            {link.href ? (
+              <a
+                href={link.href}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-11 items-center rounded-full bg-foam px-3 text-sm font-medium text-ink hover:bg-line"
+              >
+                {link.label} {link.value}
+              </a>
+            ) : (
+              <span className="inline-flex min-h-11 items-center rounded-full bg-foam px-3 text-sm text-ink">
+                {link.label}: {link.value}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export function Cover({
   src,
@@ -67,6 +119,13 @@ export function VendorCard({ vendor, owned = false }: { vendor: Vendor; owned?: 
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-medium tracking-wide text-porch uppercase">{vendor.category}</p>
           <h3 className="font-display text-xl leading-tight text-ink">{vendor.name}</h3>
+          {vendorHasCommunityKitchen(vendor) ? (
+            <p className="mt-1">
+              <span className="inline-flex items-center rounded-full bg-foam px-2 py-0.5 text-[11px] font-medium text-porch">
+                Community kitchen
+              </span>
+            </p>
+          ) : null}
           <p className="mt-0.5 flex items-center gap-1 text-xs text-muted">
             <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate">{vendor.location}</span>
@@ -75,7 +134,7 @@ export function VendorCard({ vendor, owned = false }: { vendor: Vendor; owned?: 
             {items.map((product) => (
               <li key={product.id} className="flex items-baseline justify-between gap-2 text-sm">
                 <span className="truncate text-ink">{product.name}</span>
-                <span className="shrink-0 font-medium text-mango tabular-nums">{money(product.price)}</span>
+                <span className="shrink-0 font-medium text-mango tabular-nums">{priceLabel(product)}</span>
               </li>
             ))}
           </ul>
@@ -121,7 +180,7 @@ export function WeekFoodCard({ item, lazy }: { item: WeekFood; lazy: boolean }) 
       <p className="mt-2 truncate text-sm font-medium text-ink">{item.product.name}</p>
       <p className="flex items-baseline justify-between gap-2 text-xs">
         <span className="truncate text-muted">{item.vendorName}</span>
-        <span className="shrink-0 font-medium text-mango tabular-nums">{money(item.product.price)}</span>
+        <span className="shrink-0 font-medium text-mango tabular-nums">{priceLabel(item.product)}</span>
       </p>
     </Link>
   );
