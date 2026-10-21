@@ -108,7 +108,7 @@ Shipped on top of the map / order-ahead work. Still local-only. No deploy, no ac
 - Makers type a day and time like `Friday 8pm` on Open / Edit a porch. Blank means holds stay open.
 - Neighbors see “Order by Friday 8pm” on cards and the storefront. After the cutoff, holds are refused until pickup ends, then the next week’s window opens.
 - Sample bakers: Bayfront Sourdough orders by Friday 8pm; Porch Cookie Drop orders by Thursday 8pm. Other samples stay unlimited.
-- Phone chrome: bottom tab bar (Browse / Map / Feed / Holds / Open). The top header no longer wraps five links on a 390px screen.
+- Phone chrome: bottom tab bar (Browse / Map / Feed / Holds / Open). The top header no longer wraps five links on a 390px screen. The block map is shorter on a phone so “This week” is visible without scrolling past a square map.
 - Tightened porch cards so diet chips and pin/order-ahead badges do not stack the weekly row on a phone.
 - Feed timestamps no longer repeat “Open this porch”. Hold form placeholder is “Name for the box”.
 
