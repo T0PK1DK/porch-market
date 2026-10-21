@@ -12,6 +12,7 @@ import {
   type FeedPost,
   type Vendor,
 } from "@/lib/market";
+import { relativeTime } from "@/lib/time";
 
 export const Route = createFileRoute("/feed")({
   head: () => ({
@@ -177,7 +178,9 @@ function FeedPage() {
                     )}
                   </div>
                   <p className="mt-2 text-ink">{post.text}</p>
-                  <p className="mt-2 text-xs text-muted">Open this porch</p>
+                  <p className="mt-2 text-xs text-muted">
+                    {relativeTime(post.createdAt) || "Open this porch"} · Open this porch
+                  </p>
                 </div>
               </Link>
             </li>

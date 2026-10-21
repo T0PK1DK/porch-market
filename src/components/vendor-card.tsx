@@ -1,15 +1,20 @@
 import { Link } from "@tanstack/react-router";
-import { MapPin } from "lucide-react";
+import { MapPin, Star } from "lucide-react";
 import { useState } from "react";
+import { DietPills, PickupPill, StockPill } from "@/components/status";
 import {
   photoSize,
   priceLabel,
+  remainingStock,
   vendorHasCommunityKitchen,
   type CommunityKitchenOffer,
+  type Hold,
   type PaymentLink,
   type Vendor,
   type WeekFood,
 } from "@/lib/market";
+import { neighborhoodFromLocation } from "@/lib/neighborhoods";
+import { pickupBadge } from "@/lib/pickup";
 
 export function CommunityBadge({ offer }: { offer?: CommunityKitchenOffer }) {
   if (!offer) return null;
@@ -100,8 +105,21 @@ export function Cover({
   );
 }
 
-export function VendorCard({ vendor, owned = false }: { vendor: Vendor; owned?: boolean }) {
+export function VendorCard({
+  vendor,
+  owned = false,
+  saved = false,
+  holds = [],
+  onToggleSaved,
+}: {
+  vendor: Vendor;
+  owned?: boolean;
+  saved?: boolean;
+  holds?: Hold[];
+  onToggleSaved?: (id: string) => void;
+}) {
   const items = vendor.products.slice(0, 2);
+  const badge = pickupBadge(vendor.pickup);
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-card">
       <Link
@@ -117,7 +135,10 @@ export function VendorCard({ vendor, owned = false }: { vendor: Vendor; owned?: 
           className="size-[4.5rem] shrink-0 rounded-xl sm:size-24"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium tracking-wide text-porch uppercase">{vendor.category}</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <p className="text-[11px] font-medium tracking-wide text-porch uppercase">{vendor.category}</p>
+            <PickupPill badge={badge} />
+          </div>
           <h3 className="font-display text-xl leading-tight text-ink">{vendor.name}</h3>
           {vendorHasCommunityKitchen(vendor) ? (
             <p className="mt-1">
@@ -128,7 +149,7 @@ export function VendorCard({ vendor, owned = false }: { vendor: Vendor; owned?: 
           ) : null}
           <p className="mt-0.5 flex items-center gap-1 text-xs text-muted">
             <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
-            <span className="truncate">{vendor.location}</span>
+            <span className="truncate">{neighborhoodFromLocation(vendor.location)}</span>
           </p>
           <ul className="mt-2 space-y-1">
             {items.map((product) => (
@@ -138,6 +159,7 @@ export function VendorCard({ vendor, owned = false }: { vendor: Vendor; owned?: 
               </li>
             ))}
           </ul>
+          {items[0] ? <StockPill remaining={remainingStock(items[0], holds)} /> : null}
         </div>
       </Link>
       <div className="flex items-center justify-between gap-2 border-t border-line px-3">
@@ -148,15 +170,29 @@ export function VendorCard({ vendor, owned = false }: { vendor: Vendor; owned?: 
         >
           Visit porch
         </Link>
-        {owned ? (
-          <Link
-            to="/create"
-            search={{ edit: vendor.id }}
-            className="inline-flex min-h-11 items-center text-sm font-medium text-ink hover:underline"
-          >
-            Edit
-          </Link>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {owned ? (
+            <Link
+              to="/create"
+              search={{ edit: vendor.id }}
+              className="inline-flex min-h-11 items-center text-sm font-medium text-ink hover:underline"
+            >
+              Edit
+            </Link>
+          ) : null}
+          {onToggleSaved ? (
+            <button
+              type="button"
+              aria-pressed={saved}
+              aria-label={saved ? "Remove from saved" : "Save this porch"}
+              onClick={() => onToggleSaved(vendor.id)}
+              className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-ink"
+            >
+              <Star className={`size-4 ${saved ? "fill-mango text-mango" : "text-muted"}`} aria-hidden="true" />
+              {saved ? "Saved" : "Save"}
+            </button>
+          ) : null}
+        </div>
       </div>
     </article>
   );
@@ -182,6 +218,7 @@ export function WeekFoodCard({ item, lazy }: { item: WeekFood; lazy: boolean }) 
         <span className="truncate text-muted">{item.vendorName}</span>
         <span className="shrink-0 font-medium text-mango tabular-nums">{priceLabel(item.product)}</span>
       </p>
+      <DietPills notes={item.product.dietNotes} />
     </Link>
   );
 }

@@ -1,3 +1,7 @@
+import { neighborhoodFromLocation } from "./neighborhoods.ts";
+import { isOpenToday } from "./pickup.ts";
+import { type MarketSort, scoreVendor, vendorMatchesQuery } from "./search.ts";
+
 export const CATEGORIES = ["Farm", "Fresh", "Baked", "Hot meals", "Cold meals", "Meal prep"] as const;
 
 export type Category = (typeof CATEGORIES)[number];
@@ -8,7 +12,21 @@ export type CommunityKitchenOffer = (typeof COMMUNITY_KITCHEN_OFFERS)[number];
 
 export const COMMUNITY_FILTER = "Community kitchen";
 
-export type MarketFilter = Category | "All" | typeof COMMUNITY_FILTER;
+export type MarketFilter = Category | "All" | typeof COMMUNITY_FILTER | "Saved" | "Open today";
+
+export const DIET_NOTES = [
+  "Vegetarian",
+  "Vegan",
+  "Nut-free kitchen",
+  "Dairy-free",
+  "Gluten-free option",
+] as const;
+
+export type DietNote = (typeof DIET_NOTES)[number];
+
+export type HoldStatus = "open" | "picked_up" | "canceled";
+
+export const HOLD_STALE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const CATEGORY_ALIASES: Record<string, Category> = {
   "Baked Goods": "Baked",
@@ -32,6 +50,9 @@ export type Product = {
   image: string;
   category: Category;
   communityOffer?: CommunityKitchenOffer;
+  stock?: number;
+  readyNote?: string;
+  dietNotes?: DietNote[];
 };
 
 export type PaymentHandles = {
@@ -59,22 +80,27 @@ export type Vendor = {
   products: Product[];
   ownerId?: string;
   payments?: PaymentHandles;
+  platesThisWeek?: number;
 };
 
 export type Hold = {
   id: string;
   vendorId: string;
+  vendorName: string;
   productId: string;
   productName: string;
   buyerName: string;
   note: string;
   createdAt: string;
+  status: HoldStatus;
+  qty: number;
 };
 
 export type WeekFood = {
   vendorId: string;
   vendorName: string;
   location: string;
+  neighborhood: string;
   product: Product;
 };
 
@@ -82,6 +108,8 @@ export const VENDORS_KEY = "porch-market-vendors-v1";
 export const HOLDS_KEY = "porch-market-holds-v1";
 export const OWNER_KEY = "porch-market-owner-v1";
 export const FEED_KEY = "porch-market-feed-v1";
+export const SAVED_KEY = "porch-market-saved-v1";
+export const BUYER_KEY = "porch-market-buyer-v1";
 
 export const PHOTO = {
   bread: "/photos/bread.webp",
@@ -180,6 +208,9 @@ export const SAMPLE_VENDORS: Vendor[] = [
         desc: "Tangy everyday loaf. Feeds two or three.",
         image: PHOTO.sourdough,
         category: "Baked",
+        stock: 8,
+        readyNote: "Out of the oven at 9am",
+        dietNotes: ["Vegetarian", "Vegan"],
       },
       {
         id: "rosemary-focaccia",
@@ -188,6 +219,8 @@ export const SAMPLE_VENDORS: Vendor[] = [
         desc: "Olive oil, sea salt, same morning only.",
         image: PHOTO.focaccia,
         category: "Baked",
+        stock: 6,
+        dietNotes: ["Vegetarian", "Vegan"],
       },
     ],
   },
@@ -207,6 +240,8 @@ export const SAMPLE_VENDORS: Vendor[] = [
         desc: "Raw and unfiltered. Crystallizes when it feels like it.",
         image: PHOTO.honey,
         category: "Fresh",
+        stock: 12,
+        dietNotes: ["Vegetarian", "Vegan", "Gluten-free option"],
       },
       {
         id: "guava-jam",
@@ -215,6 +250,8 @@ export const SAMPLE_VENDORS: Vendor[] = [
         desc: "Small batch, less sugar than the grocery kind.",
         image: PHOTO.jam,
         category: "Fresh",
+        stock: 8,
+        dietNotes: ["Vegetarian", "Vegan"],
       },
     ],
   },
@@ -234,6 +271,9 @@ export const SAMPLE_VENDORS: Vendor[] = [
         desc: "Deep butter, big chips, edges just set.",
         image: PHOTO.chocolateChip,
         category: "Baked",
+        stock: 10,
+        readyNote: "Boxed by 4pm",
+        dietNotes: ["Vegetarian"],
       },
       {
         id: "lime-shortbread",
@@ -242,6 +282,8 @@ export const SAMPLE_VENDORS: Vendor[] = [
         desc: "Key lime zest, sandy crumb.",
         image: PHOTO.shortbread,
         category: "Baked",
+        stock: 8,
+        dietNotes: ["Vegetarian"],
       },
     ],
   },
@@ -261,6 +303,9 @@ export const SAMPLE_VENDORS: Vendor[] = [
         desc: "Mixed sizes. Yolks the color of a mango.",
         image: PHOTO.eggs,
         category: "Farm",
+        stock: 6,
+        readyNote: "Collect in the evening",
+        dietNotes: ["Gluten-free option"],
       },
       {
         id: "mango-bag",
@@ -269,6 +314,8 @@ export const SAMPLE_VENDORS: Vendor[] = [
         desc: "In season only. Ripe enough for tonight.",
         image: PHOTO.mangoes,
         category: "Farm",
+        stock: 10,
+        dietNotes: ["Vegan", "Gluten-free option"],
       },
     ],
   },
@@ -288,6 +335,8 @@ export const SAMPLE_VENDORS: Vendor[] = [
         desc: "Sweet first, then it stays.",
         image: PHOTO.peppers,
         category: "Fresh",
+        stock: 14,
+        dietNotes: ["Vegan", "Gluten-free option"],
       },
       {
         id: "mojo",
@@ -296,6 +345,8 @@ export const SAMPLE_VENDORS: Vendor[] = [
         desc: "Garlic, cumin, enough acid for a whole pork shoulder.",
         image: PHOTO.mojo,
         category: "Fresh",
+        stock: 10,
+        dietNotes: ["Vegan", "Gluten-free option"],
       },
     ],
   },
@@ -307,6 +358,7 @@ export const SAMPLE_VENDORS: Vendor[] = [
     bio: "A weeknight kitchen that keeps a few plates for whoever needs supper. Some trays are covered by neighbors. Come as you are — no questions at the door.",
     image: PHOTO.hotMeal,
     pickup: "Tuesdays and Thursdays, 5–7pm. Front stoop.",
+    platesThisWeek: 12,
     products: [
       {
         id: "porch-soup",
@@ -316,6 +368,8 @@ export const SAMPLE_VENDORS: Vendor[] = [
         image: PHOTO.hotMeal,
         category: "Hot meals",
         communityOffer: "Free",
+        stock: 8,
+        dietNotes: ["Vegetarian", "Vegan"],
       },
       {
         id: "garden-bowl",
@@ -325,6 +379,8 @@ export const SAMPLE_VENDORS: Vendor[] = [
         image: PHOTO.salad,
         category: "Cold meals",
         communityOffer: "Pay what you can",
+        stock: 6,
+        dietNotes: ["Vegetarian", "Vegan", "Gluten-free option"],
       },
       {
         id: "sunday-trays",
@@ -333,6 +389,8 @@ export const SAMPLE_VENDORS: Vendor[] = [
         desc: "Vegetables and grains, packed for the week.",
         image: PHOTO.mealPrep,
         category: "Meal prep",
+        stock: 4,
+        dietNotes: ["Vegetarian"],
       },
     ],
   },
@@ -375,6 +433,9 @@ export type DraftProduct = {
   desc: string;
   category: Category;
   communityOffer?: CommunityKitchenOffer | "";
+  stock?: string;
+  readyNote?: string;
+  dietNotes?: DietNote[];
 };
 
 export type PaymentDraft = {
@@ -391,7 +452,34 @@ export type PorchDraft = {
   bio: string;
   products: DraftProduct[];
   payments?: PaymentDraft;
+  platesThisWeek?: string;
 };
+
+export function isDietNote(value: unknown): value is DietNote {
+  return DIET_NOTES.includes(value as DietNote);
+}
+
+export function parseDietNotes(raw: unknown): DietNote[] {
+  if (!Array.isArray(raw)) return [];
+  const notes = raw.filter(isDietNote);
+  return DIET_NOTES.filter((note) => notes.includes(note));
+}
+
+export function parseStock(raw: string): number | null {
+  const cleaned = raw.trim();
+  if (!cleaned) return null;
+  if (!/^\d{1,3}$/.test(cleaned)) return null;
+  const amount = Number(cleaned);
+  if (!Number.isInteger(amount) || amount < 0 || amount > 999) return null;
+  return amount;
+}
+
+export function parsePlatesThisWeek(raw: string): number | undefined {
+  const cleaned = raw.trim();
+  if (!cleaned) return undefined;
+  const amount = parseStock(cleaned);
+  return amount == null ? undefined : amount;
+}
 
 export function isCommunityOffer(value: unknown): value is CommunityKitchenOffer {
   return COMMUNITY_KITCHEN_OFFERS.includes(value as CommunityKitchenOffer);
@@ -568,6 +656,25 @@ export function validatePorchDraft(draft: PorchDraft): FieldError[] {
     }
   }
 
+  for (const product of ready) {
+    if (product.stock?.trim()) {
+      const stock = parseStock(product.stock);
+      if (stock === null) {
+        errors.push({
+          field: `stock:${product.key}`,
+          message: "Stock this week should be a whole number, or blank if you are not counting.",
+        });
+      }
+    }
+  }
+
+  if (draft.platesThisWeek?.trim() && parseStock(draft.platesThisWeek) === null) {
+    errors.push({
+      field: "platesThisWeek",
+      message: "Plates this week should be a whole number, or leave it blank.",
+    });
+  }
+
   if (draft.payments) {
     errors.push(...parsePaymentHandles(draft.payments).errors);
   }
@@ -591,40 +698,73 @@ export function productForFilter(vendor: Vendor, filter: MarketFilter): Product 
   return vendor.products[0];
 }
 
-export function vendorMatchesFilter(vendor: Vendor, filter: MarketFilter, query = ""): boolean {
+export function vendorMatchesFilter(
+  vendor: Vendor,
+  filter: MarketFilter,
+  query = "",
+  extras: { savedIds?: string[]; now?: Date } = {},
+): boolean {
+  if (filter === "Saved" && !(extras.savedIds ?? []).includes(vendor.id)) return false;
+  if (filter === "Open today" && !isOpenToday(vendor.pickup, extras.now)) return false;
   if (filter === COMMUNITY_FILTER && !vendorHasCommunityKitchen(vendor)) return false;
-  if (filter !== "All" && filter !== COMMUNITY_FILTER) {
+  if (filter !== "All" && filter !== COMMUNITY_FILTER && filter !== "Saved" && filter !== "Open today") {
     const hasCategory =
       vendor.category === filter || vendor.products.some((product) => product.category === filter);
     if (!hasCategory) return false;
   }
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-  const haystack = [
-    vendor.name,
-    vendor.location,
-    vendor.category,
-    vendor.bio,
-    vendor.pickup,
-    ...vendor.products.map((p) => `${p.name} ${p.desc} ${p.category} ${p.communityOffer ?? ""}`),
-  ]
-    .join(" ")
-    .toLowerCase();
-  return haystack.includes(q);
+  return vendorMatchesQuery(vendor, query);
+}
+
+export function rankVendors(vendors: Vendor[], query: string): Vendor[] {
+  if (!query.trim()) return vendors;
+  return [...vendors].sort((a, b) => {
+    const diff = scoreVendor(b, query) - scoreVendor(a, query);
+    if (diff !== 0) return diff;
+    return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
+  });
+}
+
+export function sortVendors(vendors: Vendor[], sort: MarketSort, now = new Date()): Vendor[] {
+  const copy = [...vendors];
+  if (sort === "name") {
+    return copy.sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
+  }
+  if (sort === "open") {
+    return copy.sort((a, b) => {
+      const open = Number(isOpenToday(b.pickup, now)) - Number(isOpenToday(a.pickup, now));
+      if (open !== 0) return open;
+      return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
+    });
+  }
+  return copy.sort((a, b) => {
+    const an = neighborhoodFromLocation(a.location);
+    const bn = neighborhoodFromLocation(b.location);
+    if (an !== bn) return an.localeCompare(bn);
+    return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
+  });
 }
 
 export function thisWeeksFood(vendors: Vendor[], filter: MarketFilter = "All"): WeekFood[] {
   return vendors.flatMap((vendor) => {
-    const product = productForFilter(vendor, filter);
-    if (!product) return [];
-    return [
-      {
-        vendorId: vendor.id,
-        vendorName: vendor.name,
-        location: vendor.location,
-        product,
-      },
-    ];
+    let products = vendor.products;
+    if (filter === COMMUNITY_FILTER) products = products.filter(isCommunityProduct);
+    else if (filter !== "All" && filter !== "Saved" && filter !== "Open today") {
+      const matched = products.filter((product) => product.category === filter);
+      products = matched.length ? matched : vendor.category === filter ? products.slice(0, 1) : [];
+    }
+    const ranked = [...products].sort((a, b) => {
+      const stockA = a.stock == null ? 1 : 0;
+      const stockB = b.stock == null ? 1 : 0;
+      if (stockA !== stockB) return stockA - stockB;
+      return Number(isCommunityProduct(b)) - Number(isCommunityProduct(a));
+    });
+    return ranked.slice(0, 2).map((product) => ({
+      vendorId: vendor.id,
+      vendorName: vendor.name,
+      location: vendor.location,
+      neighborhood: neighborhoodFromLocation(vendor.location),
+      product,
+    }));
   });
 }
 
@@ -691,6 +831,17 @@ function paymentsEqual(a?: PaymentHandles, b?: PaymentHandles): boolean {
     (a?.zelle ?? "") === (b?.zelle ?? "");
 }
 
+function migrateStock(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 999) return undefined;
+  return value;
+}
+
+function migrateReadyNote(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const note = value.trim().slice(0, 80);
+  return note || undefined;
+}
+
 function migrateProduct(raw: unknown, fallback: string, index: number, vendorCategory: Category): Product | null {
   if (!raw || typeof raw !== "object") return null;
   const p = raw as Partial<Product>;
@@ -698,6 +849,9 @@ function migrateProduct(raw: unknown, fallback: string, index: number, vendorCat
   const price = typeof p.price === "number" && Number.isFinite(p.price) && p.price >= 0 ? p.price : 0;
   const category = p.category === undefined ? vendorCategory : migrateCategory(p.category);
   const communityOffer = asCommunityOffer(p.communityOffer);
+  const stock = migrateStock(p.stock);
+  const readyNote = migrateReadyNote(p.readyNote);
+  const dietNotes = parseDietNotes(p.dietNotes);
   return {
     id: typeof p.id === "string" && p.id ? p.id : `p-${index}`,
     name: p.name.trim(),
@@ -706,6 +860,9 @@ function migrateProduct(raw: unknown, fallback: string, index: number, vendorCat
     image: localizeImage(typeof p.image === "string" ? p.image : "", CATEGORY_COVER[category] || fallback),
     category,
     ...(communityOffer ? { communityOffer } : {}),
+    ...(stock !== undefined ? { stock } : {}),
+    ...(readyNote ? { readyNote } : {}),
+    ...(dietNotes.length ? { dietNotes } : {}),
   };
 }
 
@@ -728,6 +885,7 @@ export function migrateVendor(raw: unknown, ownerId: string): { vendor: Vendor |
   if (!owner && v.id.startsWith("custom-") && ownerId) owner = ownerId;
 
   const payments = migratePayments(v.payments);
+  const platesThisWeek = migrateStock(v.platesThisWeek);
 
   const vendor: Vendor = {
     id: v.id,
@@ -740,12 +898,14 @@ export function migrateVendor(raw: unknown, ownerId: string): { vendor: Vendor |
     products,
     ownerId: owner,
     ...(payments ? { payments } : {}),
+    ...(platesThisWeek !== undefined ? { platesThisWeek } : {}),
   };
 
   const changed =
     vendor.image !== v.image ||
     vendor.ownerId !== v.ownerId ||
     vendor.category !== v.category ||
+    vendor.platesThisWeek !== v.platesThisWeek ||
     !paymentsEqual(vendor.payments, v.payments) ||
     !Array.isArray(v.products) ||
     vendor.products.length !== v.products.length ||
@@ -756,7 +916,10 @@ export function migrateVendor(raw: unknown, ownerId: string): { vendor: Vendor |
         product.image !== prev.image ||
         product.id !== prev.id ||
         product.category !== prev.category ||
-        product.communityOffer !== prev.communityOffer
+        product.communityOffer !== prev.communityOffer ||
+        product.stock !== prev.stock ||
+        product.readyNote !== prev.readyNote ||
+        JSON.stringify(product.dietNotes ?? []) !== JSON.stringify(Array.isArray(prev.dietNotes) ? prev.dietNotes : [])
       );
     });
 
@@ -805,17 +968,28 @@ function localizeVendor(vendor: Vendor): Vendor {
   const category = migrateCategory(vendor.category);
   const fallback = CATEGORY_COVER[category];
   const payments = migratePayments(vendor.payments);
+  const platesThisWeek = migrateStock(vendor.platesThisWeek);
   return {
     ...vendor,
     category,
     image: localizeImage(vendor.image, fallback),
     payments,
-    products: vendor.products.map((product) => ({
-      ...product,
-      category: migrateCategory(product.category || category),
-      communityOffer: asCommunityOffer(product.communityOffer),
-      image: localizeImage(product.image, CATEGORY_COVER[migrateCategory(product.category || category)]),
-    })),
+    ...(platesThisWeek !== undefined ? { platesThisWeek } : { platesThisWeek: undefined }),
+    products: vendor.products.map((product) => {
+      const productCategory = migrateCategory(product.category || category);
+      const dietNotes = parseDietNotes(product.dietNotes);
+      const stock = migrateStock(product.stock);
+      const readyNote = migrateReadyNote(product.readyNote);
+      return {
+        ...product,
+        category: productCategory,
+        communityOffer: asCommunityOffer(product.communityOffer),
+        image: localizeImage(product.image, CATEGORY_COVER[productCategory]),
+        ...(stock !== undefined ? { stock } : { stock: undefined }),
+        ...(readyNote ? { readyNote } : { readyNote: undefined }),
+        ...(dietNotes.length ? { dietNotes } : { dietNotes: undefined }),
+      };
+    }),
   };
 }
 
@@ -876,27 +1050,61 @@ export function loadHolds(): Hold[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isHold);
+    return parsed.map(migrateHold).filter((hold): hold is Hold => Boolean(hold));
   } catch {
     return [];
   }
 }
 
-function isHold(value: unknown): value is Hold {
-  if (!value || typeof value !== "object") return false;
-  const hold = value as Hold;
-  return (
-    typeof hold.id === "string" &&
-    typeof hold.vendorId === "string" &&
-    typeof hold.productId === "string" &&
-    typeof hold.productName === "string" &&
-    typeof hold.buyerName === "string" &&
-    typeof hold.createdAt === "string"
-  );
+function isHoldStatus(value: unknown): value is HoldStatus {
+  return value === "open" || value === "picked_up" || value === "canceled";
 }
 
-export function saveHold(hold: Hold): Hold[] {
-  const next = [hold, ...loadHolds().filter((item) => item.id !== hold.id)];
+function migrateHold(value: unknown): Hold | null {
+  if (!value || typeof value !== "object") return null;
+  const hold = value as Partial<Hold>;
+  if (
+    typeof hold.id !== "string" ||
+    typeof hold.vendorId !== "string" ||
+    typeof hold.productId !== "string" ||
+    typeof hold.productName !== "string" ||
+    typeof hold.buyerName !== "string" ||
+    typeof hold.createdAt !== "string"
+  ) {
+    return null;
+  }
+  const qty =
+    typeof hold.qty === "number" && Number.isInteger(hold.qty) && hold.qty > 0 && hold.qty <= 12
+      ? hold.qty
+      : 1;
+  return {
+    id: hold.id,
+    vendorId: hold.vendorId,
+    vendorName: typeof hold.vendorName === "string" && hold.vendorName.trim() ? hold.vendorName.trim() : "Porch kitchen",
+    productId: hold.productId,
+    productName: hold.productName,
+    buyerName: hold.buyerName,
+    note: typeof hold.note === "string" ? hold.note : "",
+    createdAt: hold.createdAt,
+    status: isHoldStatus(hold.status) ? hold.status : "open",
+    qty,
+  };
+}
+
+function isHold(value: unknown): value is Hold {
+  return migrateHold(value) !== null;
+}
+
+export function saveHold(hold: Hold | (Partial<Hold> & Pick<Hold, "id" | "vendorId" | "productId" | "productName" | "buyerName" | "createdAt">)): Hold[] {
+  const migrated = migrateHold({
+    status: "open",
+    qty: 1,
+    vendorName: "Porch kitchen",
+    note: "",
+    ...hold,
+  });
+  if (!migrated) return loadHolds();
+  const next = [migrated, ...loadHolds().filter((item) => item.id !== migrated.id)];
   if (canUseStorage()) localStorage.setItem(HOLDS_KEY, JSON.stringify(next));
   return next;
 }
@@ -905,6 +1113,120 @@ export function removeHold(id: string): Hold[] {
   const next = loadHolds().filter((h) => h.id !== id);
   if (canUseStorage()) localStorage.setItem(HOLDS_KEY, JSON.stringify(next));
   return next;
+}
+
+export function setHoldStatus(id: string, status: HoldStatus): Hold[] {
+  const next = loadHolds().map((hold) => (hold.id === id ? { ...hold, status } : hold));
+  if (canUseStorage()) localStorage.setItem(HOLDS_KEY, JSON.stringify(next));
+  return next;
+}
+
+export function isHoldOpen(hold: Hold): boolean {
+  return hold.status === "open";
+}
+
+export function isHoldStale(hold: Hold, now = Date.now()): boolean {
+  if (!isHoldOpen(hold)) return false;
+  const created = Date.parse(hold.createdAt);
+  if (!Number.isFinite(created)) return false;
+  return now - created > HOLD_STALE_MS;
+}
+
+export function remainingStock(product: Pick<Product, "id" | "stock">, holds: Hold[]): number | null {
+  if (product.stock == null) return null;
+  const used = holds
+    .filter((hold) => hold.productId === product.id && isHoldOpen(hold))
+    .reduce((sum, hold) => sum + hold.qty, 0);
+  return Math.max(0, product.stock - used);
+}
+
+export function remainingPlates(vendor: Vendor, holds: Hold[]): number | null {
+  if (vendor.platesThisWeek == null) return null;
+  const used = holds
+    .filter((hold) => hold.vendorId === vendor.id && isHoldOpen(hold))
+    .reduce((sum, hold) => sum + hold.qty, 0);
+  return Math.max(0, vendor.platesThisWeek - used);
+}
+
+export function placeHold(input: {
+  vendor: Vendor;
+  product: Product;
+  buyerName: string;
+  note?: string;
+  qty?: number;
+  now?: Date;
+}): { hold: Hold; holds: Hold[]; error?: string } | { hold: null; holds: Hold[]; error: string } {
+  const holds = loadHolds();
+  const buyerName = input.buyerName.trim();
+  if (!buyerName) {
+    return { hold: null, holds, error: "Leave your name so they know whose box it is." };
+  }
+  const qty = input.qty && Number.isInteger(input.qty) && input.qty > 0 ? Math.min(input.qty, 12) : 1;
+  const left = remainingStock(input.product, holds.filter((hold) => hold.vendorId === input.vendor.id));
+  if (left !== null && qty > left) {
+    return {
+      hold: null,
+      holds,
+      error: left === 0 ? "That one is spoken for this week." : `Only ${left} left this week.`,
+    };
+  }
+  const plates = remainingPlates(input.vendor, holds);
+  if (isCommunityProduct(input.product) && plates !== null && qty > plates) {
+    return {
+      hold: null,
+      holds,
+      error: plates === 0 ? "The kitchen is at its plate count for this week." : `Only ${plates} plates left this week.`,
+    };
+  }
+  const hold: Hold = {
+    id: `hold-${(input.now ?? new Date()).getTime().toString(36)}`,
+    vendorId: input.vendor.id,
+    vendorName: input.vendor.name,
+    productId: input.product.id,
+    productName: input.product.name,
+    buyerName,
+    note: (input.note ?? "").trim(),
+    createdAt: (input.now ?? new Date()).toISOString(),
+    status: "open",
+    qty,
+  };
+  return { hold, holds: saveHold(hold) };
+}
+
+export function loadSavedIds(): string[] {
+  if (!canUseStorage()) return [];
+  try {
+    const raw = localStorage.getItem(SAVED_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((id): id is string => typeof id === "string" && id.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+export function isSaved(id: string, ids = loadSavedIds()): boolean {
+  return ids.includes(id);
+}
+
+export function toggleSaved(id: string): string[] {
+  const current = loadSavedIds();
+  const next = current.includes(id) ? current.filter((item) => item !== id) : [id, ...current];
+  if (canUseStorage()) localStorage.setItem(SAVED_KEY, JSON.stringify(next));
+  return next;
+}
+
+export function loadBuyerName(): string {
+  if (!canUseStorage()) return "";
+  return localStorage.getItem(BUYER_KEY)?.trim() ?? "";
+}
+
+export function saveBuyerName(name: string): void {
+  if (!canUseStorage()) return;
+  const trimmed = name.trim().slice(0, 80);
+  if (!trimmed) localStorage.removeItem(BUYER_KEY);
+  else localStorage.setItem(BUYER_KEY, trimmed);
 }
 
 export function slugId(name: string): string {
@@ -1017,24 +1339,60 @@ export function addFeedPost(input: {
   return next;
 }
 
-export function resizeImage(file: File, max = 1100, quality = 0.72): Promise<string> {
+export function resizeImage(file: File, max = 1100, quality = 0.82): Promise<string> {
   return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
     const image = new Image();
     image.onload = () => {
-      const scale = Math.min(1, max / Math.max(image.width, image.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(image.width * scale));
-      canvas.height = Math.max(1, Math.round(image.height * scale));
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
+      try {
+        const fail = () => {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("Could not read that photo."));
+        };
+        let width = image.width;
+        let height = image.height;
+        if (!width || !height) {
+          fail();
+          return;
+        }
+
+        let source: CanvasImageSource = image;
+        // Step down in halves when shrinking a lot — cleaner than one long jump.
+        while (Math.max(width, height) / 2 > max) {
+          const mid = document.createElement("canvas");
+          mid.width = Math.max(1, Math.round(width / 2));
+          mid.height = Math.max(1, Math.round(height / 2));
+          const midCtx = mid.getContext("2d");
+          if (!midCtx) {
+            fail();
+            return;
+          }
+          midCtx.imageSmoothingEnabled = true;
+          midCtx.imageSmoothingQuality = "high";
+          midCtx.drawImage(source, 0, 0, mid.width, mid.height);
+          source = mid;
+          width = mid.width;
+          height = mid.height;
+        }
+
+        const scale = Math.min(1, max / Math.max(width, height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(width * scale));
+        canvas.height = Math.max(1, Math.round(height * scale));
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          fail();
+          return;
+        }
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(objectUrl);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      } catch {
         URL.revokeObjectURL(objectUrl);
         reject(new Error("Could not read that photo."));
-        return;
       }
-      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(objectUrl);
-      resolve(canvas.toDataURL("image/jpeg", quality));
     };
     image.onerror = () => {
       URL.revokeObjectURL(objectUrl);

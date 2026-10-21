@@ -9,9 +9,12 @@ import {
   FEED_KEY,
   getDeviceOwnerId,
   HOLDS_KEY,
+  isHoldStale,
   isOwnedByThisDevice,
+  loadBuyerName,
   loadFeed,
   loadHolds,
+  loadSavedIds,
   loadVendors,
   localizeImage,
   migrateCategory,
@@ -24,13 +27,19 @@ import {
   parsePaymentHandles,
   paymentLinks,
   PHOTO,
+  placeHold,
+  remainingPlates,
+  remainingStock,
   removeHold,
   removeProduct,
   removeVendor,
   SAMPLE_VENDORS,
+  saveBuyerName,
   saveHold,
   saveVendors,
+  setHoldStatus,
   thisWeeksFood,
+  toggleSaved,
   updateVendor,
   validatePorchDraft,
   vendorHasCommunityKitchen,
@@ -38,7 +47,6 @@ import {
   formatPriceInput,
   parsePrice,
   VENDORS_KEY,
-  type Hold,
   type Vendor,
 } from "./market.ts";
 
@@ -274,7 +282,7 @@ describe("add and remove products", () => {
 
 describe("holds", () => {
   it("places a hold and persists it across reload", () => {
-    const hold: Hold = {
+    saveHold({
       id: "hold-1",
       vendorId: "bayfront-sourdough",
       productId: "country-loaf",
@@ -282,10 +290,11 @@ describe("holds", () => {
       buyerName: "Alex",
       note: "Sliced if you can",
       createdAt: "2026-10-16T12:00:00.000Z",
-    };
-    saveHold(hold);
+    });
     assert.equal(loadHolds().length, 1);
     assert.equal(loadHolds()[0].buyerName, "Alex");
+    assert.equal(loadHolds()[0].status, "open");
+    assert.equal(loadHolds()[0].qty, 1);
     assert.equal(JSON.parse(localStorage.getItem(HOLDS_KEY) ?? "[]")[0].productName, "Country sourdough");
   });
 
@@ -301,6 +310,8 @@ describe("holds", () => {
     };
     localStorage.setItem(HOLDS_KEY, JSON.stringify([old]));
     assert.equal(loadHolds()[0].id, "hold-legacy");
+    assert.equal(loadHolds()[0].status, "open");
+    assert.equal(loadHolds()[0].note, "");
     removeHold("hold-legacy");
     assert.deepEqual(loadHolds(), []);
   });
@@ -319,11 +330,13 @@ describe("ownership and weekly food", () => {
     assert.ok(!gone.some((v) => v.id === "custom-lime-loaf-old"));
   });
 
-  it("lists one food item per porch for the weekly row", () => {
+  it("lists this week's food from each porch, up to two items", () => {
     const week = thisWeeksFood(SAMPLE_VENDORS);
-    assert.equal(week.length, SAMPLE_VENDORS.length);
-    assert.equal(week[0].product.id, SAMPLE_VENDORS[0].products[0].id);
+    assert.ok(week.length >= SAMPLE_VENDORS.length);
+    assert.ok(week.length <= SAMPLE_VENDORS.length * 2);
     assert.equal(week[0].vendorName, SAMPLE_VENDORS[0].name);
+    assert.ok(week[0].neighborhood);
+    assert.ok(SAMPLE_VENDORS[0].products.some((product) => product.id === week[0].product.id));
   });
 
   it("does not persist a vendors list that is only samples", () => {
@@ -594,5 +607,105 @@ describe("feed storage", () => {
     const persisted = JSON.parse(localStorage.getItem(FEED_KEY) ?? "[]");
     assert.equal(persisted[0].text, "Lime loaf at 4pm");
     assert.equal(loadFeed()[0].text, "Lime loaf at 4pm");
+  });
+});
+
+describe("stock, plates, saved porches, and hold status", () => {
+  it("counts remaining stock against open holds only", () => {
+    const loaf = SAMPLE_VENDORS[0].products[0];
+    assert.equal(remainingStock(loaf, []), 8);
+    saveHold({
+      id: "hold-stock",
+      vendorId: "bayfront-sourdough",
+      vendorName: "Bayfront Sourdough",
+      productId: loaf.id,
+      productName: loaf.name,
+      buyerName: "Alex",
+      note: "",
+      createdAt: "2026-10-16T12:00:00.000Z",
+      qty: 3,
+      status: "open",
+    });
+    assert.equal(remainingStock(loaf, loadHolds()), 5);
+    setHoldStatus("hold-stock", "picked_up");
+    assert.equal(remainingStock(loaf, loadHolds()), 8);
+  });
+
+  it("refuses a hold that would oversell the weekly cap", () => {
+    const vendor = SAMPLE_VENDORS[0];
+    const product = { ...vendor.products[0], stock: 2 };
+    const first = placeHold({ vendor, product, buyerName: "Alex", qty: 2 });
+    assert.equal(first.error, undefined);
+    assert.ok(first.hold);
+    const second = placeHold({ vendor, product, buyerName: "Sam", qty: 1 });
+    assert.equal(second.hold, null);
+    assert.match(second.error, /spoken for|left/i);
+  });
+
+  it("tracks community plates for the week and marks a stale open hold", () => {
+    const table = SAMPLE_VENDORS.find((vendor) => vendor.id === "little-haiti-table")!;
+    assert.equal(remainingPlates(table, []), 12);
+    const placed = placeHold({
+      vendor: table,
+      product: table.products[0],
+      buyerName: "Sam",
+      qty: 2,
+    });
+    assert.equal(remainingPlates(table, placed.holds), 10);
+    const stale = {
+      ...placed.hold!,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    assert.equal(isHoldStale(stale, Date.parse("2026-10-21T00:00:00.000Z")), true);
+    assert.equal(isHoldStale({ ...stale, status: "picked_up" }, Date.parse("2026-10-21T00:00:00.000Z")), false);
+  });
+
+  it("saves a porch and a buyer name on this device", () => {
+    assert.deepEqual(loadSavedIds(), []);
+    toggleSaved("bayfront-sourdough");
+    assert.deepEqual(loadSavedIds(), ["bayfront-sourdough"]);
+    assert.equal(vendorMatchesFilter(SAMPLE_VENDORS[0], "Saved", "", { savedIds: loadSavedIds() }), true);
+    assert.equal(vendorMatchesFilter(SAMPLE_VENDORS[1], "Saved", "", { savedIds: loadSavedIds() }), false);
+    toggleSaved("bayfront-sourdough");
+    assert.deepEqual(loadSavedIds(), []);
+    saveBuyerName("  Alex  ");
+    assert.equal(loadBuyerName(), "Alex");
+  });
+
+  it("keeps diet notes and plate counts when a porch is stored", () => {
+    localStorage.setItem(OWNER_KEY, "owner-keep");
+    const stored = [
+      {
+        id: "custom-table",
+        name: "Block Table",
+        location: "Little Haiti, FL",
+        category: "Hot meals",
+        bio: "Plates.",
+        image: PHOTO.hotMeal,
+        pickup: "Evenings",
+        ownerId: "owner-keep",
+        platesThisWeek: 9,
+        products: [
+          {
+            id: "soup",
+            name: "Soup",
+            price: 0,
+            desc: "",
+            image: PHOTO.hotMeal,
+            category: "Hot meals",
+            communityOffer: "Free",
+            stock: 4,
+            readyNote: "From 5pm",
+            dietNotes: ["Vegan", "not-a-real-tag", "Vegetarian"],
+          },
+        ],
+      },
+    ];
+    const { vendors, changed } = migrateVendors(stored, "owner-keep");
+    assert.equal(changed, true);
+    assert.equal(vendors[0].platesThisWeek, 9);
+    assert.equal(vendors[0].products[0].stock, 4);
+    assert.equal(vendors[0].products[0].readyNote, "From 5pm");
+    assert.deepEqual(vendors[0].products[0].dietNotes, ["Vegetarian", "Vegan"]);
   });
 });

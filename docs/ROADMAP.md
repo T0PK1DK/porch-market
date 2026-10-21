@@ -1,14 +1,15 @@
 # Porch Market later
 
-This app is still a listing on one phone. Holds are a name on a box. Nothing is charged here. King can use this note when deciding what to build next.
+This app is still a listing on one phone. Holds are a name on a box. Nothing is charged here.
 
 ## What is true today
 
-- Porches, holds, payment handles, and the feed live in the browser on this device.
+- Porches, holds, saved lists, payment handles, and the feed live in the browser on this device.
 - Categories are Farm, Fresh, Baked, Hot meals, Cold meals, and Meal prep. Makers pick them on each product.
-- Community kitchen is a mark on an item: Free, Pay what you can, or Donation-backed. It is not a kitchen network yet.
+- Community kitchen is a mark on an item: Free, Pay what you can, or Donation-backed. A kitchen can also set how many plates they can cover this week. It is not a kitchen network yet.
 - Payment handles are the maker’s own Cash App, Venmo, PayPal.me, or Zelle note. Porch Market does not take money.
 - The feed is local. Seeded posts are marked Example so they are not mistaken for a live city-wide board.
+- Pickup windows are read from the kitchen’s own sentence. Neighborhoods are named places on a stylized block map, not GPS.
 
 ## A real shared feed
 
@@ -34,21 +35,23 @@ Until that exists, keep “pay at pickup” as the default and only show handles
 
 ## Meal kitchens and donations
 
-Community kitchen today is a badge and a filter. King’s longer plan — meals for people who need them, including people without housing, at a lower price or free from donations — needs more than a flag:
+Community kitchen today is a badge, a filter, and an optional plate count. A longer plan — meals for people who need them, including people without housing, at a lower price or free from donations — needs more than a flag:
 
 - Accounts for kitchens and for people who give
 - A ledger of donated plates vs plates taken, without turning anyone into a case file
 - Moderation and safety: food handling, hours, and a real address or pickup window
 - Donation collection (processor + payouts) if money is pooled, or a partner kitchen if money never hits this app
-- Dignity in the product: no eligibility quiz in public, no “homeless” labels on people, no public tally of who came hungry
+- Dignity in the product: no eligibility quiz in public, no labels on people, no public tally of who came hungry
 - Local partners and rules. This is not only software
 
-A next software step, still without a processor, could be a kitchen-only list of how many plates they can cover this week. A next human step is a partner and a real pickup table.
+A next software step, still without a processor, could be a bake-day cutoff time. A next human step is a partner and a real pickup table.
 
 ## What not to bolt on early
 
 - Stripe, paid maps, or paid image APIs just to demo
 - Accounts that lock the current local porches
 - A public donation wall that exposes who received food
+- PIN or passcode gates
+- 3D scenes; this is a listing
 
-Build the shared piece when King wants neighbors on different phones to see the same porch, the same feed, or the same kitchen table.
+Build the shared piece when neighbors on different phones should see the same porch, the same feed, or the same kitchen table.
