@@ -1,4 +1,11 @@
 import {
+  bakeHoldError,
+  migrateOrderBy,
+  orderByEquals,
+  parseOrderBy,
+  type BakeCutoff,
+} from "./cutoff.ts";
+import {
   migrateMapPin,
   mapPinsEqual,
   offersOrderAhead,
@@ -12,6 +19,14 @@ import { neighborhoodFromLocation } from "./neighborhoods.ts";
 import { isOpenToday } from "./pickup.ts";
 import { type MarketSort, scoreVendor, vendorMatchesQuery } from "./search.ts";
 
+export type { BakeCutoff, BakeState } from "./cutoff.ts";
+export {
+  bakeHoldError,
+  bakeState,
+  formatOrderBy,
+  isBakeAccepting,
+  parseOrderBy,
+} from "./cutoff.ts";
 export type { MapPin, MapPinDraft, PinKind } from "./geo.ts";
 export { offersOrderAhead, pinKindLabel, publicMapPin, publicMapPins } from "./geo.ts";
 
@@ -96,6 +111,7 @@ export type Vendor = {
   ownerId?: string;
   payments?: PaymentHandles;
   platesThisWeek?: number;
+  orderBy?: BakeCutoff;
   mapPin?: MapPin;
 };
 
@@ -218,6 +234,7 @@ export const SAMPLE_VENDORS: Vendor[] = [
     bio: "Weekend loaves and focaccia from a home oven two blocks off the bay. The crumb is open, the crust is loud, and Saturday is the only day the porch is open.",
     image: PHOTO.bread,
     pickup: "Saturdays, 9am–noon. Porch pickup. Come by — no delivery.",
+    orderBy: { weekday: 5, minutes: 20 * 60 },
     mapPin: { kind: "home", optedIn: true },
     products: [
       {
@@ -283,6 +300,7 @@ export const SAMPLE_VENDORS: Vendor[] = [
     bio: "One baker, two days, cookies that are supposed to bend before they break. Pre-order so the porch box has your name on it.",
     image: PHOTO.cookies,
     pickup: "Friday and Saturday, 4–6pm. Pre-order holds go on the railing.",
+    orderBy: { weekday: 4, minutes: 20 * 60 },
     mapPin: { kind: "home", optedIn: true },
     products: [
       {
@@ -555,6 +573,7 @@ export type PorchDraft = {
   products: DraftProduct[];
   payments?: PaymentDraft;
   platesThisWeek?: string;
+  orderBy?: string;
   mapPin?: MapPinDraft;
 };
 
@@ -778,6 +797,13 @@ export function validatePorchDraft(draft: PorchDraft): FieldError[] {
     });
   }
 
+  if (draft.orderBy?.trim() && parseOrderBy(draft.orderBy) === null) {
+    errors.push({
+      field: "orderBy",
+      message: "Say a day and time like Friday 8pm, or leave it blank.",
+    });
+  }
+
   if (draft.payments) {
     errors.push(...parsePaymentHandles(draft.payments).errors);
   }
@@ -992,6 +1018,8 @@ export function migrateVendor(raw: unknown, ownerId: string): { vendor: Vendor |
 
   const payments = migratePayments(v.payments);
   const platesThisWeek = migrateStock(v.platesThisWeek);
+  const sample = !owner ? SAMPLE_VENDORS.find((item) => item.id === v.id) : undefined;
+  const orderBy = migrateOrderBy(v.orderBy) ?? sample?.orderBy;
   const mapPin = migrateMapPin(v.mapPin);
 
   const vendor: Vendor = refreshDemoMobilePin({
@@ -1006,6 +1034,7 @@ export function migrateVendor(raw: unknown, ownerId: string): { vendor: Vendor |
     ownerId: owner,
     ...(payments ? { payments } : {}),
     ...(platesThisWeek !== undefined ? { platesThisWeek } : {}),
+    ...(orderBy ? { orderBy } : {}),
     ...(mapPin ? { mapPin } : {}),
   });
 
@@ -1014,6 +1043,7 @@ export function migrateVendor(raw: unknown, ownerId: string): { vendor: Vendor |
     vendor.ownerId !== v.ownerId ||
     vendor.category !== v.category ||
     vendor.platesThisWeek !== v.platesThisWeek ||
+    !orderByEquals(vendor.orderBy, v.orderBy as BakeCutoff | undefined) ||
     !mapPinsEqual(vendor.mapPin, v.mapPin) ||
     !paymentsEqual(vendor.payments, v.payments) ||
     !Array.isArray(v.products) ||
@@ -1078,6 +1108,7 @@ function localizeVendor(vendor: Vendor): Vendor {
   const fallback = CATEGORY_COVER[category];
   const payments = migratePayments(vendor.payments);
   const platesThisWeek = migrateStock(vendor.platesThisWeek);
+  const orderBy = migrateOrderBy(vendor.orderBy);
   const mapPin = sanitizeMapPin(vendor.mapPin);
   return {
     ...vendor,
@@ -1085,6 +1116,7 @@ function localizeVendor(vendor: Vendor): Vendor {
     image: localizeImage(vendor.image, fallback),
     payments,
     ...(platesThisWeek !== undefined ? { platesThisWeek } : { platesThisWeek: undefined }),
+    ...(orderBy ? { orderBy } : { orderBy: undefined }),
     ...(mapPin ? { mapPin } : { mapPin: undefined }),
     products: vendor.products.map((product) => {
       const productCategory = migrateCategory(product.category || category);
@@ -1283,6 +1315,10 @@ export function placeHold(input: {
     return { hold: null, holds, error: "Leave your name so they know whose box it is." };
   }
   const qty = input.qty && Number.isInteger(input.qty) && input.qty > 0 ? Math.min(input.qty, 12) : 1;
+  const cutoffError = bakeHoldError(input.vendor.orderBy, input.vendor.pickup, input.now);
+  if (cutoffError) {
+    return { hold: null, holds, error: cutoffError };
+  }
   const left = remainingStock(input.product, holds.filter((hold) => hold.vendorId === input.vendor.id));
   if (left !== null && qty > left) {
     return {

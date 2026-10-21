@@ -2,8 +2,9 @@ import { Link } from "@tanstack/react-router";
 import { MapPin, Star } from "lucide-react";
 import { useState } from "react";
 import { PinKindChip } from "@/components/pin-badge";
-import { DietPills, PickupPill, StockPill } from "@/components/status";
+import { DietPills, OrderByPill, PickupPill, StockPill } from "@/components/status";
 import {
+  bakeState,
   photoSize,
   priceLabel,
   remainingStock,
@@ -122,6 +123,7 @@ export function VendorCard({
 }) {
   const items = vendor.products.slice(0, 2);
   const badge = pickupBadge(vendor.pickup);
+  const cutoff = bakeState(vendor.orderBy, vendor.pickup);
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-card">
       <Link
@@ -140,9 +142,16 @@ export function VendorCard({
           <div className="flex flex-wrap items-center gap-1.5">
             <p className="text-[11px] font-medium tracking-wide text-porch uppercase">{vendor.category}</p>
             <PickupPill badge={badge} />
-            {vendor.mapPin?.optedIn ? <PinKindChip kind={vendor.mapPin.kind} /> : null}
+            <span className="hidden sm:inline-flex">
+              <OrderByPill state={cutoff} />
+            </span>
+            {vendor.mapPin?.optedIn ? (
+              <span className="hidden sm:inline-flex">
+                <PinKindChip kind={vendor.mapPin.kind} />
+              </span>
+            ) : null}
             {vendorOffersOrderAhead(vendor) ? (
-              <span className="inline-flex items-center rounded-full bg-foam px-2 py-0.5 text-[11px] font-medium text-mango">
+              <span className="hidden sm:inline-flex items-center rounded-full bg-foam px-2 py-0.5 text-[11px] font-medium text-mango">
                 Order ahead
               </span>
             ) : null}
@@ -168,6 +177,11 @@ export function VendorCard({
             ))}
           </ul>
           {items[0] ? <StockPill remaining={remainingStock(items[0], holds)} /> : null}
+          {cutoff ? (
+            <p className="mt-1.5 sm:hidden">
+              <OrderByPill state={cutoff} />
+            </p>
+          ) : null}
         </div>
       </Link>
       <div className="flex items-center justify-between gap-2 border-t border-line px-3">
@@ -226,7 +240,9 @@ export function WeekFoodCard({ item, lazy }: { item: WeekFood; lazy: boolean }) 
         <span className="truncate text-muted">{item.vendorName}</span>
         <span className="shrink-0 font-medium text-mango tabular-nums">{priceLabel(item.product)}</span>
       </p>
-      <DietPills notes={item.product.dietNotes} />
+      <div className="hidden sm:block">
+        <DietPills notes={item.product.dietNotes} limit={2} />
+      </div>
     </Link>
   );
 }

@@ -3,13 +3,17 @@ import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { PinFields } from "@/components/pin-fields";
 import { Shell } from "@/components/shell";
+import { OrderByPill } from "@/components/status";
+import { CommunityBadge, Cover, PayMakerLinks } from "@/components/vendor-card";
 import { emptyMapPinDraft, mapPinDraftFrom, sanitizeMapPin, type MapPinDraft } from "@/lib/geo";
 import {
   addVendor,
+  bakeState,
   CATEGORIES,
   CATEGORY_COVER,
   COMMUNITY_KITCHEN_OFFERS,
   emptyPaymentDraft,
+  formatOrderBy,
   formatPriceInput,
   DIET_NOTES,
   isCommunityOffer,
@@ -17,6 +21,7 @@ import {
   loadVendors,
   parseDietNotes,
   parsePaymentHandles,
+  parseOrderBy,
   parsePlatesThisWeek,
   parsePrice,
   parseStock,
@@ -36,7 +41,6 @@ import {
   type PaymentDraft,
   type Vendor,
 } from "@/lib/market";
-import { CommunityBadge, Cover, PayMakerLinks } from "@/components/vendor-card";
 
 type CreateSearch = {
   edit?: string;
@@ -75,6 +79,7 @@ function CreatePorch() {
   const [bio, setBio] = useState("");
   const [pickup, setPickup] = useState("");
   const [platesThisWeek, setPlatesThisWeek] = useState("");
+  const [orderBy, setOrderBy] = useState("");
   const [photo, setPhoto] = useState("");
   const [existingImage, setExistingImage] = useState("");
   const [existingId, setExistingId] = useState<string | null>(null);
@@ -110,6 +115,7 @@ function CreatePorch() {
     setBio(vendor.bio);
     setPickup(vendor.pickup);
     setPlatesThisWeek(vendor.platesThisWeek != null ? String(vendor.platesThisWeek) : "");
+    setOrderBy(vendor.orderBy ? formatOrderBy(vendor.orderBy) : "");
     setExistingImage(vendor.image);
     setPhoto("");
     setPayments(paymentDraftFrom(vendor.payments));
@@ -145,6 +151,7 @@ function CreatePorch() {
     image: cover,
     pickup: pickup.trim() || "Pickup window goes here.",
     platesThisWeek: parsePlatesThisWeek(platesThisWeek),
+    orderBy: parseOrderBy(orderBy) ?? undefined,
     products: products
       .filter((p) => p.name.trim())
       .map((p) => {
@@ -190,7 +197,17 @@ function CreatePorch() {
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const nextErrors = validatePorchDraft({ name, location, pickup, bio, products, payments, platesThisWeek, mapPin });
+    const nextErrors = validatePorchDraft({
+      name,
+      location,
+      pickup,
+      bio,
+      products,
+      payments,
+      platesThisWeek,
+      orderBy,
+      mapPin,
+    });
     setErrors(nextErrors);
     if (nextErrors.length) return;
 
@@ -208,6 +225,7 @@ function CreatePorch() {
       ownerId: existing?.ownerId,
       payments: handles,
       platesThisWeek: parsePlatesThisWeek(platesThisWeek),
+      orderBy: parseOrderBy(orderBy) ?? undefined,
       mapPin: sanitizeMapPin(mapPin),
       products: readyProducts.map((p) => {
         const prior = existing?.products.find((item) => item.id === p.key);
@@ -350,6 +368,18 @@ function CreatePorch() {
               />
               <p className="mt-1.5 text-xs font-normal text-muted">
                 Name the days and hours. We read that into an “open today” badge. A street pin is optional below.
+              </p>
+            </Field>
+            <Field label="Order by (optional)" error={errorFor("orderBy")}>
+              <input
+                className={field}
+                value={orderBy}
+                onChange={(e) => setOrderBy(e.target.value)}
+                placeholder="Friday 8pm"
+                aria-invalid={Boolean(errorFor("orderBy"))}
+              />
+              <p className="mt-1.5 text-xs font-normal text-muted">
+                Last time neighbors can ask for this week’s bake. Leave blank if you take holds anytime.
               </p>
             </Field>
             <PinFields draft={mapPin} onChange={setMapPin} error={errorFor("mapPin") ?? errorFor("hereOn")} />
@@ -597,6 +627,9 @@ function CreatePorch() {
               <p className="mt-1 text-sm text-muted">{preview.location}</p>
               <p className="mt-3 text-sm text-ink">{preview.bio}</p>
               <p className="mt-2 text-sm text-muted">{preview.pickup}</p>
+              <div className="mt-2">
+                <OrderByPill state={bakeState(preview.orderBy, preview.pickup)} />
+              </div>
               <PayMakerLinks links={paymentLinks(preview.payments)} compact />
               <ul className="mt-4 space-y-2 border-t border-line pt-3">
                 {(preview.products.length

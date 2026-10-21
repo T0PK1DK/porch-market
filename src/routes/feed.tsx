@@ -4,6 +4,7 @@ import { Shell } from "@/components/shell";
 import { Cover } from "@/components/vendor-card";
 import {
   addFeedPost,
+  EXAMPLE_FEED,
   isOwnedByThisDevice,
   loadFeed,
   loadVendors,
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/feed")({
 
 function FeedPage() {
   const [vendors, setVendors] = useState<Vendor[]>(SAMPLE_VENDORS);
-  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [posts, setPosts] = useState<FeedPost[]>(EXAMPLE_FEED);
   const [ready, setReady] = useState(false);
   const [vendorId, setVendorId] = useState("");
   const [text, setText] = useState("");
@@ -179,7 +180,7 @@ function FeedPage() {
                   </div>
                   <p className="mt-2 text-ink">{post.text}</p>
                   <p className="mt-2 text-xs text-muted">
-                    {relativeTime(post.createdAt) || "Open this porch"} · Open this porch
+                    {[relativeTime(post.createdAt), "Open this porch"].filter(Boolean).join(" · ")}
                   </p>
                 </div>
               </Link>
