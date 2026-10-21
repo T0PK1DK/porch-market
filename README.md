@@ -11,6 +11,7 @@ This is a listing, not a license or a payment processor.
 - Opt-in pins: home porches stay **approximate**; shops and food trucks may drop an exact pin. Truck “here today” pins expire at the end of the day
 - Shop **order-ahead** on top of holds (`ready for pickup`, pay in the shop)
 - Weekly stock counts and “spoken for” when a bake is claimed
+- A kitchen-set **order-by cutoff** for this week’s bake (holds close after that time and reopen after pickup)
 - Pickup windows parsed from the kitchen’s own note — open now / next window
 - Community kitchen marks: free, pay what you can, or donation-backed, plus an optional plates-this-week count
 - Dietary notes on items (vegetarian, vegan, nut-free kitchen, and similar)

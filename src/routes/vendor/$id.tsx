@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { LawNote } from "@/components/law-note";
 import { PinKindChip, PinPrecisionNote } from "@/components/pin-badge";
 import { Shell } from "@/components/shell";
-import { DietPills, PickupPill, StockPill } from "@/components/status";
+import { DietPills, OrderByPill, PickupPill, StockPill } from "@/components/status";
 import { CommunityBadge, Cover, PayMakerLinks } from "@/components/vendor-card";
 import { publicMapPin } from "@/lib/geo";
 import {
+  bakeState,
   isHoldOpen,
   isHoldReady,
   isHoldStale,
@@ -75,6 +76,7 @@ function Storefront() {
   const openHolds = holds.filter(isHoldOpen);
   const badge = vendor ? pickupBadge(vendor.pickup) : null;
   const platesLeft = vendor ? remainingPlates(vendor, openHolds) : null;
+  const cutoff = vendor ? bakeState(vendor.orderBy, vendor.pickup) : null;
 
   useEffect(() => {
     if (!vendor) return;
@@ -155,7 +157,7 @@ function Storefront() {
           className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-muted hover:text-ink"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
-          All vendors
+          All porches
         </Link>
 
         <Cover
@@ -199,6 +201,12 @@ function Storefront() {
               <Clock className="mt-0.5 size-4 shrink-0 text-porch" aria-hidden="true" />
               {vendor.pickup}
             </p>
+            {cutoff ? (
+              <div className="mt-3">
+                <OrderByPill state={cutoff} />
+                <p className="mt-1.5 text-sm text-muted">{cutoff.detail}</p>
+              </div>
+            ) : null}
             {platesLeft != null ? (
               <p className="mt-3 text-sm text-ink">
                 {platesLeft} {platesLeft === 1 ? "plate" : "plates"} the kitchen can still cover this week.
@@ -393,13 +401,21 @@ function Storefront() {
                       type="button"
                       className="mt-3 inline-flex min-h-11 items-center rounded-full bg-porch px-4 text-sm font-medium text-paper hover:bg-porch-deep disabled:opacity-50"
                       aria-expanded={open}
-                      disabled={soldOut}
+                      disabled={soldOut || (cutoff != null && !cutoff.accepting)}
                       onClick={() => {
                         setActiveId(open ? null : product.id);
                         setFormError("");
                       }}
                     >
-                      {soldOut ? "Spoken for this week" : open ? "Close" : orderAhead ? "Order ahead" : "Hold for pickup"}
+                      {soldOut
+                        ? "Spoken for this week"
+                        : cutoff && !cutoff.accepting
+                          ? "Too late this week"
+                          : open
+                            ? "Close"
+                            : orderAhead
+                              ? "Order ahead"
+                              : "Hold for pickup"}
                     </button>
                   </div>
                 </div>
@@ -418,7 +434,7 @@ function Storefront() {
                         className="mt-1.5 w-full rounded-xl border border-line bg-card px-3 py-3 text-base outline-none focus:border-porch"
                         value={buyerName}
                         onChange={(e) => setBuyerName(e.target.value)}
-                        placeholder="Alex"
+                        placeholder="Name for the box"
                         autoComplete="name"
                         aria-invalid={Boolean(formError)}
                         required

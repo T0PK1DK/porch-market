@@ -191,7 +191,7 @@ function Home() {
             <label className="flex items-center gap-2 text-sm text-muted">
               Sort
               <select
-                className="rounded-full border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-porch"
+                className="min-h-11 rounded-full border border-line bg-card px-3 text-sm text-ink outline-none focus:border-porch"
                 value={sort}
                 onChange={(e) => setSort(e.target.value as MarketSort)}
               >

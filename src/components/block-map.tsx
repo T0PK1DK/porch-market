@@ -15,7 +15,7 @@ export function BlockMap({
         <h2 className="font-display text-lg text-ink">The block</h2>
         <p className="text-xs text-muted">Filter by neighborhood</p>
       </div>
-      <svg viewBox="0 0 100 100" className="mt-2 h-auto w-full" role="img" aria-label="South Florida neighborhoods">
+      <svg viewBox="0 0 100 100" className="mt-2 h-44 w-full sm:h-auto sm:max-h-80" role="img" aria-label="South Florida neighborhoods">
         <rect x="0" y="0" width="100" height="100" rx="8" fill="#efe7d6" />
         <path d="M78 8c8 6 14 16 16 28 2 14-4 26-14 36-6 6-8 14-6 22" fill="none" stroke="#c9d6cf" strokeWidth="6" />
         <path d="M8 70c10 4 22 8 34 6 12-2 20 6 28 14" fill="none" stroke="#d7c9b0" strokeWidth="5" />

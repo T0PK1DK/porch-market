@@ -742,3 +742,74 @@ describe("stock, plates, saved porches, and hold status", () => {
     assert.deepEqual(vendors[0].products[0].dietNotes, ["Vegetarian", "Vegan"]);
   });
 });
+
+describe("bake-day order-by cutoff", () => {
+  it("ships weekend bakers with a kitchen-set cutoff", () => {
+    const loaf = SAMPLE_VENDORS.find((vendor) => vendor.id === "bayfront-sourdough");
+    const cookies = SAMPLE_VENDORS.find((vendor) => vendor.id === "porch-cookies");
+    assert.deepEqual(loaf?.orderBy, { weekday: 5, minutes: 20 * 60 });
+    assert.deepEqual(cookies?.orderBy, { weekday: 4, minutes: 20 * 60 });
+    assert.equal(SAMPLE_VENDORS.find((vendor) => vendor.id === "keys-honey")?.orderBy, undefined);
+  });
+
+  it("validates a typed cutoff and migrates a stored string", () => {
+    const errors = validatePorchDraft({
+      name: "Lime Loaf",
+      location: "Little Haiti, FL",
+      pickup: "Saturdays",
+      bio: "One loaf.",
+      products: [{ key: "p1", name: "Loaf", price: "12", desc: "", category: "Baked" }],
+      orderBy: "tonight",
+    });
+    assert.equal(errors[0]?.field, "orderBy");
+
+    const ok = validatePorchDraft({
+      name: "Lime Loaf",
+      location: "Little Haiti, FL",
+      pickup: "Saturdays",
+      bio: "One loaf.",
+      products: [{ key: "p1", name: "Loaf", price: "12", desc: "", category: "Baked" }],
+      orderBy: "Friday 8pm",
+    });
+    assert.deepEqual(ok, []);
+
+    localStorage.setItem(OWNER_KEY, "owner-keep");
+    const { vendors, changed } = migrateVendors(
+      [
+        {
+          id: "custom-lime",
+          name: "Lime Loaf",
+          location: "Little Haiti, FL",
+          category: "Baked",
+          bio: "One loaf.",
+          image: PHOTO.bread,
+          pickup: "Saturdays, 9am–noon",
+          ownerId: "owner-keep",
+          orderBy: "Friday 8pm",
+          products: [{ id: "loaf", name: "Loaf", price: 12, desc: "", image: PHOTO.bread, category: "Baked" }],
+        },
+      ],
+      "owner-keep",
+    );
+    assert.equal(changed, true);
+    assert.deepEqual(vendors[0].orderBy, { weekday: 5, minutes: 20 * 60 });
+
+    const { vendors: samples } = migrateVendors(
+      [{ ...SAMPLE_VENDORS[0], orderBy: undefined }],
+      "owner-keep",
+    );
+    assert.deepEqual(samples[0].orderBy, { weekday: 5, minutes: 20 * 60 });
+  });
+
+  it("refuses a hold after the kitchen's bake-day cutoff", () => {
+    const vendor = SAMPLE_VENDORS[0];
+    const product = vendor.products[0];
+    const fridayNight = new Date(2026, 9, 23, 21);
+    const thursday = new Date(2026, 9, 22, 16);
+    const late = placeHold({ vendor, product, buyerName: "Sam", now: fridayNight });
+    assert.equal(late.hold, null);
+    assert.match(late.error, /Too late for this week's bake/);
+    const early = placeHold({ vendor, product, buyerName: "Sam", now: thursday });
+    assert.ok(early.hold);
+  });
+});

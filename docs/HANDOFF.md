@@ -22,6 +22,7 @@ Read first, in this order:
 - Holds are a name on a box. Payment handles are optional and never invented. Pay at pickup or in the shop.
 - Pickup text is parsed into days/hours (`src/lib/pickup.ts`) for “Open today” / “Open now”.
 - Products can have weekly `stock`, `dietNotes`, and a `readyNote`. Community kitchens can set `platesThisWeek`.
+- Kitchens can set `orderBy` (`{ weekday, minutes }`) so neighbors know the last time to ask for this week’s bake. Holds close after that cutoff and reopen after the listed pickup ends. See `src/lib/cutoff.ts`.
 - Search is token-scored (`src/lib/search.ts`), not a single substring.
 - Neighborhoods are resolved from location aliases (`src/lib/neighborhoods.ts`). The browse page still has a stylized block map for filtering.
 - The street map (`/map`) uses **MapLibre GL** + **OpenFreeMap** (OpenStreetMap-based, no key). See `src/lib/geo.ts` and `src/components/street-map-canvas.tsx`.
@@ -69,7 +70,7 @@ A future driver role is **out of scope** until payments, insurance, and backgrou
 - `npm test`
 - `npm run typecheck`
 - `npm run build`
-- Phone ~390px: browse block map + chips, open `/map` and tap a pin, save a porch, open a storefront, place a hold, see it on Holds, mark a shop order ready, create/edit a porch with a pin type, Feed timestamps.
+- Phone ~390px: bottom nav, browse block map + chips, open `/map` and tap a pin, save a porch, open a storefront, place a hold, see it on Holds, mark a shop order ready, create/edit a porch with a pin type and an order-by cutoff, Feed timestamps.
 - Confirm sample kitchens still have **no invented payment handles**.
 - Confirm a home pin never shows a street-accurate coordinate.
 
@@ -88,10 +89,40 @@ A future driver role is **out of scope** until payments, insurance, and backgrou
 
 ## Safe next steps (pick one)
 
-1. A kitchen-only “this week’s bake day” cutoff (order-by time) still stored locally.
-2. Expire stale “ready at 4pm” **feed** posts so the board does not lie — still local.
-3. Distinct product photos on the create form (already have cover upload).
-4. Let a truck owner nudge today’s pin without rewriting the whole porch — still local, still expires tonight.
-5. Cross-phone sync needs accounts — see `docs/ROADMAP.md`. Do not start that unless the ask names accounts.
+1. Expire stale “ready at 4pm” **feed** posts so the board does not lie — still local.
+2. Distinct product photos on the create form (already have cover upload).
+3. Let a truck owner nudge today’s pin without rewriting the whole porch — still local, still expires tonight.
+4. Cross-phone sync needs accounts — see `docs/ROADMAP.md`. Do not start that unless the ask names accounts.
 
 If you change storage shapes, migrate in `src/lib/market.ts` / `src/lib/geo.ts` and add a test. Prefer the more correct parse/search/stock/geo math even if it is slower than a shortcut.
+
+---
+
+## Pass — bake-day cutoff + mobile polish
+
+Shipped on top of the map / order-ahead work. Still local-only. No deploy, no accounts, no paid maps, no passcodes, no personal names.
+
+### Added
+
+- Kitchen-only **order-by cutoff** (`Vendor.orderBy: { weekday, minutes }`) in `src/lib/cutoff.ts`.
+- Makers type a day and time like `Friday 8pm` on Open / Edit a porch. Blank means holds stay open.
+- Neighbors see “Order by Friday 8pm” on cards and the storefront. After the cutoff, holds are refused until pickup ends, then the next week’s window opens.
+- Sample bakers: Bayfront Sourdough orders by Friday 8pm; Porch Cookie Drop orders by Thursday 8pm. Other samples stay unlimited.
+- Phone chrome: bottom tab bar (Browse / Map / Feed / Holds / Open). The top header no longer wraps five links on a 390px screen. The block map is shorter on a phone so “This week” is visible without scrolling past a square map.
+- Tightened porch cards so diet chips and pin/order-ahead badges do not stack the weekly row on a phone.
+- Feed timestamps no longer repeat “Open this porch”. Hold form placeholder is “Name for the box”.
+
+### Verify
+
+- `npm test` (includes `src/lib/cutoff.test.ts`)
+- `npm run typecheck`
+- `npm run build`
+- Phone ~390px: bottom nav, browse chips, a baker card showing the cutoff, storefront aside, Open a porch order-by field.
+- Confirm sample kitchens still have **no invented payment handles**.
+
+### Safe next steps (pick one)
+
+1. Expire stale “ready at 4pm” **feed** posts so the board does not lie — still local.
+2. Distinct product photos on the create form (already have cover upload).
+3. Let a truck owner nudge today’s pin without rewriting the whole porch — still local, still expires tonight.
+4. Cross-phone sync needs accounts — see `docs/ROADMAP.md`. Do not start that unless the ask names accounts.
