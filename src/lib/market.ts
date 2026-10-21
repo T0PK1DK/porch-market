@@ -1,6 +1,19 @@
+import {
+  migrateMapPin,
+  mapPinsEqual,
+  offersOrderAhead,
+  refreshDemoMobilePin,
+  sanitizeMapPin,
+  validateMapPinDraft,
+  type MapPin,
+  type MapPinDraft,
+} from "./geo.ts";
 import { neighborhoodFromLocation } from "./neighborhoods.ts";
 import { isOpenToday } from "./pickup.ts";
 import { type MarketSort, scoreVendor, vendorMatchesQuery } from "./search.ts";
+
+export type { MapPin, MapPinDraft, PinKind } from "./geo.ts";
+export { offersOrderAhead, pinKindLabel, publicMapPin, publicMapPins } from "./geo.ts";
 
 export const CATEGORIES = ["Farm", "Fresh", "Baked", "Hot meals", "Cold meals", "Meal prep"] as const;
 
@@ -24,7 +37,9 @@ export const DIET_NOTES = [
 
 export type DietNote = (typeof DIET_NOTES)[number];
 
-export type HoldStatus = "open" | "picked_up" | "canceled";
+export type HoldStatus = "open" | "ready_for_pickup" | "picked_up" | "canceled";
+
+export type FulfillmentKind = "pickup";
 
 export const HOLD_STALE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -81,6 +96,7 @@ export type Vendor = {
   ownerId?: string;
   payments?: PaymentHandles;
   platesThisWeek?: number;
+  mapPin?: MapPin;
 };
 
 export type Hold = {
@@ -94,6 +110,8 @@ export type Hold = {
   createdAt: string;
   status: HoldStatus;
   qty: number;
+  /** Always pickup today. Delivery is phase 3 — see docs/HANDOFF.md. */
+  fulfillment: FulfillmentKind;
 };
 
 export type WeekFood = {
@@ -200,6 +218,7 @@ export const SAMPLE_VENDORS: Vendor[] = [
     bio: "Weekend loaves and focaccia from a home oven two blocks off the bay. The crumb is open, the crust is loud, and Saturday is the only day the porch is open.",
     image: PHOTO.bread,
     pickup: "Saturdays, 9am–noon. Porch pickup. Come by — no delivery.",
+    mapPin: { kind: "home", optedIn: true },
     products: [
       {
         id: "country-loaf",
@@ -232,6 +251,7 @@ export const SAMPLE_VENDORS: Vendor[] = [
     bio: "Wildflower honey from hives south of town, plus a small jam shelf that follows the fruit. Jars are labeled, sealed, and ready for a local handoff.",
     image: PHOTO.honeyJars,
     pickup: "Sundays after 2pm in Homestead, or a Coral Gables drop-off if you ask ahead.",
+    mapPin: { kind: "home", optedIn: true },
     products: [
       {
         id: "wildflower-honey",
@@ -263,6 +283,7 @@ export const SAMPLE_VENDORS: Vendor[] = [
     bio: "One baker, two days, cookies that are supposed to bend before they break. Pre-order so the porch box has your name on it.",
     image: PHOTO.cookies,
     pickup: "Friday and Saturday, 4–6pm. Pre-order holds go on the railing.",
+    mapPin: { kind: "home", optedIn: true },
     products: [
       {
         id: "choc-dozen",
@@ -295,6 +316,7 @@ export const SAMPLE_VENDORS: Vendor[] = [
     bio: "A small backyard flock and whatever the mango tree decides to do. Eggs are ungraded and unwashed until you ask — bring a carton back if you have one.",
     image: PHOTO.eggsNest,
     pickup: "Weekday evenings. Text from the gate and someone will step out.",
+    mapPin: { kind: "home", optedIn: true },
     products: [
       {
         id: "dozen-eggs",
@@ -327,6 +349,7 @@ export const SAMPLE_VENDORS: Vendor[] = [
     bio: "Mango habanero and a mojo that actually tastes like sour orange, not bottled mystery. Bottled in a home kitchen on the same block where it’s sold.",
     image: PHOTO.hotSauce,
     pickup: "Thursdays, 5–7pm, front stoop. Cash or Venmo at the door.",
+    mapPin: { kind: "home", optedIn: true },
     products: [
       {
         id: "mango-habanero",
@@ -359,6 +382,7 @@ export const SAMPLE_VENDORS: Vendor[] = [
     image: PHOTO.hotMeal,
     pickup: "Tuesdays and Thursdays, 5–7pm. Front stoop.",
     platesThisWeek: 12,
+    mapPin: { kind: "home", optedIn: true },
     products: [
       {
         id: "porch-soup",
@@ -391,6 +415,84 @@ export const SAMPLE_VENDORS: Vendor[] = [
         category: "Meal prep",
         stock: 4,
         dietNotes: ["Vegetarian"],
+      },
+    ],
+  },
+  {
+    id: "gables-pantry",
+    name: "Gables Pantry",
+    location: "Coral Gables, FL",
+    category: "Fresh",
+    bio: "A walk-up shop on Miracle Mile with jars, bread, and a cold case. Order ahead, then pay at the counter when the bag is ready.",
+    image: PHOTO.market,
+    pickup: "Tuesday–Saturday, 10am–6pm. Order ahead, pick up in the shop.",
+    mapPin: {
+      kind: "shop",
+      optedIn: true,
+      exactLat: 25.7496,
+      exactLng: -80.257,
+      orderAhead: true,
+    },
+    products: [
+      {
+        id: "pantry-loaf",
+        name: "Counter loaf",
+        price: 8,
+        desc: "Baked next door. Ready after 11.",
+        image: PHOTO.bread,
+        category: "Baked",
+        stock: 16,
+        readyNote: "Ready after 11am",
+        dietNotes: ["Vegetarian"],
+      },
+      {
+        id: "citrus-marmalade",
+        name: "Citrus marmalade",
+        price: 9,
+        desc: "Seville-style, small jar.",
+        image: PHOTO.jam,
+        category: "Fresh",
+        stock: 10,
+        dietNotes: ["Vegetarian", "Vegan"],
+      },
+    ],
+  },
+  {
+    id: "biscayne-lunch-truck",
+    name: "Biscayne Lunch Truck",
+    location: "Miami, FL",
+    category: "Hot meals",
+    bio: "A weekday lunch truck that posts today’s curb. The pin is only good for today — tomorrow they move.",
+    image: PHOTO.hotMeal,
+    pickup: "Weekdays, 11am–2pm. Look for the truck on the map.",
+    mapPin: {
+      kind: "mobile",
+      optedIn: true,
+      exactLat: 25.784,
+      exactLng: -80.1875,
+      hereOn: "2026-10-21",
+      hereFrom: "11:00",
+      hereUntil: "14:00",
+    },
+    products: [
+      {
+        id: "rice-plate",
+        name: "Rice plate",
+        price: 12,
+        desc: "Rice, beans, and whatever the pan is doing.",
+        image: PHOTO.rice,
+        category: "Hot meals",
+        stock: 20,
+        readyNote: "Hot until 2pm",
+      },
+      {
+        id: "stew-cup",
+        name: "Stew cup",
+        price: 7,
+        desc: "A cup you can walk with.",
+        image: PHOTO.stew,
+        category: "Hot meals",
+        stock: 14,
       },
     ],
   },
@@ -453,6 +555,7 @@ export type PorchDraft = {
   products: DraftProduct[];
   payments?: PaymentDraft;
   platesThisWeek?: string;
+  mapPin?: MapPinDraft;
 };
 
 export function isDietNote(value: unknown): value is DietNote {
@@ -678,6 +781,9 @@ export function validatePorchDraft(draft: PorchDraft): FieldError[] {
   if (draft.payments) {
     errors.push(...parsePaymentHandles(draft.payments).errors);
   }
+  if (draft.mapPin) {
+    errors.push(...validateMapPinDraft(draft.mapPin));
+  }
   return errors;
 }
 
@@ -886,8 +992,9 @@ export function migrateVendor(raw: unknown, ownerId: string): { vendor: Vendor |
 
   const payments = migratePayments(v.payments);
   const platesThisWeek = migrateStock(v.platesThisWeek);
+  const mapPin = migrateMapPin(v.mapPin);
 
-  const vendor: Vendor = {
+  const vendor: Vendor = refreshDemoMobilePin({
     id: v.id,
     name: typeof v.name === "string" && v.name.trim() ? v.name.trim() : "Porch kitchen",
     location: typeof v.location === "string" ? v.location : "",
@@ -899,13 +1006,15 @@ export function migrateVendor(raw: unknown, ownerId: string): { vendor: Vendor |
     ownerId: owner,
     ...(payments ? { payments } : {}),
     ...(platesThisWeek !== undefined ? { platesThisWeek } : {}),
-  };
+    ...(mapPin ? { mapPin } : {}),
+  });
 
   const changed =
     vendor.image !== v.image ||
     vendor.ownerId !== v.ownerId ||
     vendor.category !== v.category ||
     vendor.platesThisWeek !== v.platesThisWeek ||
+    !mapPinsEqual(vendor.mapPin, v.mapPin) ||
     !paymentsEqual(vendor.payments, v.payments) ||
     !Array.isArray(v.products) ||
     vendor.products.length !== v.products.length ||
@@ -969,12 +1078,14 @@ function localizeVendor(vendor: Vendor): Vendor {
   const fallback = CATEGORY_COVER[category];
   const payments = migratePayments(vendor.payments);
   const platesThisWeek = migrateStock(vendor.platesThisWeek);
+  const mapPin = sanitizeMapPin(vendor.mapPin);
   return {
     ...vendor,
     category,
     image: localizeImage(vendor.image, fallback),
     payments,
     ...(platesThisWeek !== undefined ? { platesThisWeek } : { platesThisWeek: undefined }),
+    ...(mapPin ? { mapPin } : { mapPin: undefined }),
     products: vendor.products.map((product) => {
       const productCategory = migrateCategory(product.category || category);
       const dietNotes = parseDietNotes(product.dietNotes);
@@ -1057,7 +1168,7 @@ export function loadHolds(): Hold[] {
 }
 
 function isHoldStatus(value: unknown): value is HoldStatus {
-  return value === "open" || value === "picked_up" || value === "canceled";
+  return value === "open" || value === "ready_for_pickup" || value === "picked_up" || value === "canceled";
 }
 
 function migrateHold(value: unknown): Hold | null {
@@ -1088,6 +1199,7 @@ function migrateHold(value: unknown): Hold | null {
     createdAt: hold.createdAt,
     status: isHoldStatus(hold.status) ? hold.status : "open",
     qty,
+    fulfillment: hold.fulfillment === "pickup" ? "pickup" : "pickup",
   };
 }
 
@@ -1101,6 +1213,7 @@ export function saveHold(hold: Hold | (Partial<Hold> & Pick<Hold, "id" | "vendor
     qty: 1,
     vendorName: "Porch kitchen",
     note: "",
+    fulfillment: "pickup",
     ...hold,
   });
   if (!migrated) return loadHolds();
@@ -1122,7 +1235,15 @@ export function setHoldStatus(id: string, status: HoldStatus): Hold[] {
 }
 
 export function isHoldOpen(hold: Hold): boolean {
-  return hold.status === "open";
+  return hold.status === "open" || hold.status === "ready_for_pickup";
+}
+
+export function isHoldReady(hold: Hold): boolean {
+  return hold.status === "ready_for_pickup";
+}
+
+export function vendorOffersOrderAhead(vendor?: Vendor | null): boolean {
+  return offersOrderAhead(vendor?.mapPin);
 }
 
 export function isHoldStale(hold: Hold, now = Date.now()): boolean {
@@ -1189,6 +1310,7 @@ export function placeHold(input: {
     createdAt: (input.now ?? new Date()).toISOString(),
     status: "open",
     qty,
+    fulfillment: "pickup",
   };
   return { hold, holds: saveHold(hold) };
 }

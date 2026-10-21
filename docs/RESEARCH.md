@@ -60,12 +60,29 @@ This product is a listing, not a game, so 3D was not added. A few bakery / marke
 
 1. **Pickup windows as data** — Homegrown / Simply Bread / Too Good To Go. Parse the pickup note into days and hours; show “Open today” or the next window.
 2. **Weekly stock and a kitchen ticket board** — Hotplate / Homegrown / Cook & Sell. Remaining counts, sold-out, holds as tickets a maker can mark picked up.
-3. **Neighborhood discovery** — Nextdoor / True Home Market / LocalHarvest. A stylized block map and group-by-neighborhood, no paid map tile.
+3. **Neighborhood discovery, then an opt-in street map** — Nextdoor / True Home Market / LocalHarvest / Homegrown. Browse still filters by neighborhood. The street map (MapLibre + OpenFreeMap) only shows people who opted in. Home pins stay approximate; trucks and shops may be exact.
 4. **Saved porches** — Marketplace / OfferUp. A local star list.
 5. **Dietary notes** — Too Good To Go filters, without turning the porch into a medical form.
 6. **Community plates with dignity** — Olio. A kitchen can say how many plates they can cover this week. No eligibility quiz, no public tally of who came hungry.
 7. **Cottage food reminder with official links** — Forrager / FDACS. The app stays a listing.
 8. **Pay outside the app** — Bakesy / True Home Market. Handles stay optional and never invented.
+9. **Here-today truck pins** — Roaming Hunger / Street Food Finder. A mobile pin is today’s curb, not a permanent address, and it expires tonight.
+10. **Order-ahead + ready-for-pickup** — Homegrown / shop pickup counters. Built on holds, not a second cart. Pay in the shop.
+
+## Maps, trucks, and shop pickup
+
+True Home Market and Homegrown treat place as discovery, not a street address for every home baker. Homegrown keeps the neighborhood visible until pickup. That is why home pins here are fuzzed and opt-in.
+
+Food-truck directories treat location as **today’s curb**:
+
+| App | Pattern borrowed | Sources |
+| --- | --- | --- |
+| **Roaming Hunger** | A truck is a moving pin with a “here now” window, not a permanent kitchen address. | [roaminghunger.com](https://www.roaminghunger.com/) |
+| **Street Food Finder** | Daily spots and a map that goes stale when the truck leaves. | [streetfoodfinder.com](https://www.streetfoodfinder.com/) |
+
+Tiles: **MapLibre GL** + **OpenFreeMap** (OpenStreetMap data, no API key). Not Mapbox, Google, or Leaflet. Attribution stays on the map.
+
+Order-ahead is a hold with a `ready_for_pickup` status — the same ticket board, not a second checkout. Drivers, insurance, and background checks are phase 3 only (`docs/HANDOFF.md`).
 
 ## What we deliberately did not take
 
@@ -95,3 +112,8 @@ This product is a listing, not a game, so 3D was not added. A few bakery / marke
 - https://lifehacker.com/money/best-apps-reduce-food-waste-save-money-on-groceries
 - https://www.roblox.com/games/106131416903029/Cook-Sell
 - https://www.roblox.com/games/6915291292/Bakery-Simulator
+- https://maplibre.org/maplibre-gl-js/docs/
+- https://openfreemap.org/
+- https://www.openstreetmap.org/copyright
+- https://www.roaminghunger.com/
+- https://www.streetfoodfinder.com/

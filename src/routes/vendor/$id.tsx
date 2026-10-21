@@ -2,11 +2,14 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Clock, Copy, MapPin, Pencil, Star, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LawNote } from "@/components/law-note";
+import { PinKindChip, PinPrecisionNote } from "@/components/pin-badge";
 import { Shell } from "@/components/shell";
 import { DietPills, PickupPill, StockPill } from "@/components/status";
 import { CommunityBadge, Cover, PayMakerLinks } from "@/components/vendor-card";
+import { publicMapPin } from "@/lib/geo";
 import {
   isHoldOpen,
+  isHoldReady,
   isHoldStale,
   isOwnedByThisDevice,
   isSaved,
@@ -26,6 +29,7 @@ import {
   setHoldStatus,
   toggleSaved,
   vendorHasCommunityKitchen,
+  vendorOffersOrderAhead,
   type Hold,
   type Vendor,
 } from "@/lib/market";
@@ -103,6 +107,8 @@ function Storefront() {
   }
 
   const porch = vendor;
+  const mapPin = publicMapPin(porch);
+  const orderAhead = vendorOffersOrderAhead(porch);
 
   function hold(productId: string) {
     const product = porch.products.find((item) => item.id === productId);
@@ -177,6 +183,15 @@ function Storefront() {
               <MapPin className="size-4" aria-hidden="true" />
               {neighborhoodFromLocation(vendor.location)} · {vendor.location}
             </p>
+            {mapPin ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <PinKindChip kind={mapPin.kind} />
+                <PinPrecisionNote pin={mapPin} />
+                <Link to="/map" className="text-sm font-medium text-porch hover:underline">
+                  See on the map
+                </Link>
+              </div>
+            ) : null}
             <p className="mt-4 max-w-xl text-lg text-ink">{vendor.bio}</p>
           </div>
           <aside className="h-fit rounded-2xl border border-line bg-card p-4 shadow-card">
@@ -190,7 +205,9 @@ function Storefront() {
               </p>
             ) : null}
             <p className="mt-3 text-sm text-muted">
-              A hold is a name on a box. Pay at pickup — nothing is charged here.
+              {orderAhead
+                ? "Order ahead, then pay in the shop when the bag is ready. Nothing is charged here."
+                : "A hold is a name on a box. Pay at pickup — nothing is charged here."}
             </p>
             {vendorHasCommunityKitchen(vendor) ? (
               <p className="mt-3 text-sm text-muted">
@@ -271,7 +288,8 @@ function Storefront() {
             <p className="mt-1 text-sm">
               {lastHold.qty > 1 ? `${lastHold.qty} × ` : ""}
               {lastHold.productName}
-              {lastHold.note ? ` — ${lastHold.note}` : ""}. A name on a box — pay at pickup.
+              {lastHold.note ? ` — ${lastHold.note}` : ""}.{" "}
+              {orderAhead ? "Pay in the shop when they mark it ready." : "A name on a box — pay at pickup."}
             </p>
             <PayMakerLinks links={paymentLinks(vendor.payments)} compact />
             <button
@@ -304,10 +322,22 @@ function Storefront() {
                     <p className="text-sm text-muted">
                       {item.buyerName}
                       {item.note ? ` — ${item.note}` : ""} · {relativeTime(item.createdAt)}
+                      {isHoldReady(item) ? " · ready for pickup" : ""}
                       {isHoldStale(item) ? " · older than a week" : ""}
                     </p>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
+                    {orderAhead && item.status === "open" ? (
+                      <button
+                        type="button"
+                        className="inline-flex min-h-11 items-center text-sm font-medium text-porch"
+                        onClick={() =>
+                          setHolds(setHoldStatus(item.id, "ready_for_pickup").filter((holdItem) => holdItem.vendorId === id))
+                        }
+                      >
+                        Ready for pickup
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="inline-flex min-h-11 items-center text-sm font-medium text-porch"
@@ -369,7 +399,7 @@ function Storefront() {
                         setFormError("");
                       }}
                     >
-                      {soldOut ? "Spoken for this week" : open ? "Close" : "Hold for pickup"}
+                      {soldOut ? "Spoken for this week" : open ? "Close" : orderAhead ? "Order ahead" : "Hold for pickup"}
                     </button>
                   </div>
                 </div>
@@ -424,7 +454,7 @@ function Storefront() {
                         type="submit"
                         className="inline-flex min-h-11 items-center rounded-full bg-mango px-5 text-sm font-medium text-paper hover:bg-mango-deep"
                       >
-                        Ask them to set one aside
+                        {orderAhead ? "Place pickup order" : "Ask them to set one aside"}
                       </button>
                     </div>
                   </form>
@@ -441,6 +471,7 @@ function Storefront() {
                           <span className="font-medium">{item.buyerName}</span>
                           {item.qty > 1 ? ` · ${item.qty}` : ""}
                           {item.note ? ` — ${item.note}` : ""}
+                          {isHoldReady(item) ? " · ready for pickup" : ""}
                           {isHoldStale(item) ? " · older than a week" : ""}
                         </span>
                         <button

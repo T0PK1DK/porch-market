@@ -611,6 +611,39 @@ describe("feed storage", () => {
 });
 
 describe("stock, plates, saved porches, and hold status", () => {
+  it("keeps stock reserved while a shop marks the hold ready for pickup", () => {
+    const loaf = SAMPLE_VENDORS[0].products[0];
+    saveHold({
+      id: "hold-ready",
+      vendorId: "bayfront-sourdough",
+      vendorName: "Bayfront Sourdough",
+      productId: loaf.id,
+      productName: loaf.name,
+      buyerName: "Alex",
+      note: "",
+      createdAt: "2026-10-16T12:00:00.000Z",
+      qty: 2,
+      status: "ready_for_pickup",
+    });
+    assert.equal(remainingStock(loaf, loadHolds()), 6);
+    const stored = JSON.parse(localStorage.getItem(HOLDS_KEY) ?? "[]");
+    assert.equal(stored[0].fulfillment, "pickup");
+    assert.equal(stored[0].status, "ready_for_pickup");
+  });
+
+  it("strips exact coordinates from a home pin on migrate", () => {
+    const { vendors } = migrateVendors(
+      [
+        {
+          ...SAMPLE_VENDORS[0],
+          mapPin: { kind: "home", optedIn: true, exactLat: 25.79071, exactLng: -80.13001 },
+        },
+      ],
+      "owner-keep",
+    );
+    assert.deepEqual(vendors[0].mapPin, { kind: "home", optedIn: true });
+  });
+
   it("counts remaining stock against open holds only", () => {
     const loaf = SAMPLE_VENDORS[0].products[0];
     assert.equal(remainingStock(loaf, []), 8);

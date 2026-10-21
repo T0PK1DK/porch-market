@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Shell } from "@/components/shell";
 import {
   isHoldOpen,
+  isHoldReady,
   isHoldStale,
   isOwnedByThisDevice,
   loadHolds,
@@ -10,6 +11,7 @@ import {
   removeHold,
   SAMPLE_VENDORS,
   setHoldStatus,
+  vendorOffersOrderAhead,
   type Hold,
   type Vendor,
 } from "@/lib/market";
@@ -57,6 +59,8 @@ function HoldsPage() {
           ) : (
             <TicketList
               holds={kitchen}
+              vendors={vendors}
+              onReady={(id) => setHolds(setHoldStatus(id, "ready_for_pickup"))}
               onPicked={(id) => setHolds(setHoldStatus(id, "picked_up"))}
               onCancel={(id) => setHolds(removeHold(id))}
             />
@@ -70,7 +74,7 @@ function HoldsPage() {
               Ask a porch to set something aside. It will show up here.
             </p>
           ) : (
-            <TicketList holds={neighbor} onCancel={(id) => setHolds(removeHold(id))} />
+            <TicketList holds={neighbor} vendors={vendors} onCancel={(id) => setHolds(removeHold(id))} />
           )}
         </section>
 
@@ -84,7 +88,7 @@ function HoldsPage() {
                   {" · "}
                   {hold.buyerName}
                   {" · "}
-                  {hold.status === "picked_up" ? "picked up" : hold.status}
+                  {hold.status === "picked_up" ? "picked up" : hold.status === "ready_for_pickup" ? "was ready" : hold.status}
                 </li>
               ))}
             </ul>
@@ -97,60 +101,78 @@ function HoldsPage() {
 
 function TicketList({
   holds,
+  vendors = [],
+  onReady,
   onPicked,
   onCancel,
 }: {
   holds: Hold[];
+  vendors?: Vendor[];
+  onReady?: (id: string) => void;
   onPicked?: (id: string) => void;
   onCancel: (id: string) => void;
 }) {
   return (
     <ol className="mt-3 space-y-2">
-      {holds.map((hold) => (
-        <li key={hold.id} className="rounded-2xl border border-line bg-card p-4 shadow-card">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="font-display text-xl text-ink">
-                {hold.qty > 1 ? `${hold.qty} × ` : ""}
-                {hold.productName}
-              </p>
-              <p className="mt-1 text-sm text-muted">
-                {hold.buyerName}
-                {hold.note ? ` — ${hold.note}` : ""}
-              </p>
-              <p className="mt-1 text-xs text-muted">
-                {hold.vendorName} · {relativeTime(hold.createdAt)}
-                {isHoldStale(hold) ? " · older than a week" : ""}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                to="/vendor/$id"
-                params={{ id: hold.vendorId }}
-                className="inline-flex min-h-11 items-center text-sm font-medium text-porch"
-              >
-                Open porch
-              </Link>
-              {onPicked ? (
+      {holds.map((hold) => {
+        const vendor = vendors.find((item) => item.id === hold.vendorId);
+        const canReady = onReady && vendorOffersOrderAhead(vendor) && hold.status === "open";
+        return (
+          <li key={hold.id} className="rounded-2xl border border-line bg-card p-4 shadow-card">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-display text-xl text-ink">
+                  {hold.qty > 1 ? `${hold.qty} × ` : ""}
+                  {hold.productName}
+                </p>
+                <p className="mt-1 text-sm text-muted">
+                  {hold.buyerName}
+                  {hold.note ? ` — ${hold.note}` : ""}
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  {hold.vendorName} · {relativeTime(hold.createdAt)}
+                  {isHoldReady(hold) ? " · ready for pickup — pay in the shop" : ""}
+                  {isHoldStale(hold) ? " · older than a week" : ""}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  to="/vendor/$id"
+                  params={{ id: hold.vendorId }}
+                  className="inline-flex min-h-11 items-center text-sm font-medium text-porch"
+                >
+                  Open porch
+                </Link>
+                {canReady ? (
+                  <button
+                    type="button"
+                    className="inline-flex min-h-11 items-center text-sm font-medium text-porch"
+                    onClick={() => onReady(hold.id)}
+                  >
+                    Ready for pickup
+                  </button>
+                ) : null}
+                {onPicked ? (
+                  <button
+                    type="button"
+                    className="inline-flex min-h-11 items-center text-sm font-medium text-ink"
+                    onClick={() => onPicked(hold.id)}
+                  >
+                    Picked up
+                  </button>
+                ) : null}
                 <button
                   type="button"
-                  className="inline-flex min-h-11 items-center text-sm font-medium text-ink"
-                  onClick={() => onPicked(hold.id)}
+                  className="inline-flex min-h-11 items-center text-sm font-medium text-mango"
+                  onClick={() => onCancel(hold.id)}
                 >
-                  Picked up
+                  Cancel
                 </button>
-              ) : null}
-              <button
-                type="button"
-                className="inline-flex min-h-11 items-center text-sm font-medium text-mango"
-                onClick={() => onCancel(hold.id)}
-              >
-                Cancel
-              </button>
+              </div>
             </div>
-          </div>
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ol>
   );
 }

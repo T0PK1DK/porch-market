@@ -7,7 +7,9 @@ This is a listing, not a license or a payment processor.
 ## What’s in the app
 
 - Browse with search, category filters, **Open today**, and **Saved**
-- A stylized South Florida **block map** (neighborhoods, not a street pin)
+- A stylized South Florida **block map** for neighborhood filters, plus a **street map** (MapLibre GL + OpenFreeMap / OpenStreetMap tiles, no API key)
+- Opt-in pins: home porches stay **approximate**; shops and food trucks may drop an exact pin. Truck “here today” pins expire at the end of the day
+- Shop **order-ahead** on top of holds (`ready for pickup`, pay in the shop)
 - Weekly stock counts and “spoken for” when a bake is claimed
 - Pickup windows parsed from the kitchen’s own note — open now / next window
 - Community kitchen marks: free, pay what you can, or donation-backed, plus an optional plates-this-week count
@@ -23,6 +25,9 @@ This is a listing, not a license or a payment processor.
 - [Cottage food and marketplace research](docs/RESEARCH.md)
 - [What is still local-only](docs/ROADMAP.md)
 - [Handoff prompt for the next editor](docs/HANDOFF.md)
+- [MapLibre GL](https://maplibre.org/maplibre-gl-js/docs/)
+- [OpenFreeMap](https://openfreemap.org/) (OpenStreetMap-based tiles, no key)
+- [OpenStreetMap copyright](https://www.openstreetmap.org/copyright)
 - [Florida FDACS cottage foods](https://www.fdacs.gov/Business-Services/Food-Establishments/Cottage-Foods)
 - [UF/IFAS: allowed vs prohibited foods](https://ask.ifas.ufl.edu/publication/FS425)
 - [Forrager: Florida cottage food law](https://forrager.com/law/florida/)

@@ -1,12 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { MapPin, Star } from "lucide-react";
 import { useState } from "react";
+import { PinKindChip } from "@/components/pin-badge";
 import { DietPills, PickupPill, StockPill } from "@/components/status";
 import {
   photoSize,
   priceLabel,
   remainingStock,
   vendorHasCommunityKitchen,
+  vendorOffersOrderAhead,
   type CommunityKitchenOffer,
   type Hold,
   type PaymentLink,
@@ -138,6 +140,12 @@ export function VendorCard({
           <div className="flex flex-wrap items-center gap-1.5">
             <p className="text-[11px] font-medium tracking-wide text-porch uppercase">{vendor.category}</p>
             <PickupPill badge={badge} />
+            {vendor.mapPin?.optedIn ? <PinKindChip kind={vendor.mapPin.kind} /> : null}
+            {vendorOffersOrderAhead(vendor) ? (
+              <span className="inline-flex items-center rounded-full bg-foam px-2 py-0.5 text-[11px] font-medium text-mango">
+                Order ahead
+              </span>
+            ) : null}
           </div>
           <h3 className="font-display text-xl leading-tight text-ink">{vendor.name}</h3>
           {vendorHasCommunityKitchen(vendor) ? (

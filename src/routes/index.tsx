@@ -160,6 +160,12 @@ function Home() {
 
       <div className="mt-3">
         <BlockMap active={neighborhood} counts={neighborhoodCounts} onSelect={setNeighborhood} />
+        <p className="mt-2 text-sm text-muted">
+          Neighborhood filter only — home pins stay approximate.{" "}
+          <Link to="/map" className="font-medium text-porch hover:underline">
+            Open the street map
+          </Link>
+        </p>
       </div>
 
       {weekly.length > 0 && (

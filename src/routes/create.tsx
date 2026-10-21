@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { PinFields } from "@/components/pin-fields";
 import { Shell } from "@/components/shell";
+import { emptyMapPinDraft, mapPinDraftFrom, sanitizeMapPin, type MapPinDraft } from "@/lib/geo";
 import {
   addVendor,
   CATEGORIES,
@@ -82,6 +84,7 @@ function CreatePorch() {
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [photoNote, setPhotoNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mapPin, setMapPin] = useState<MapPinDraft>(emptyMapPinDraft());
 
   function errorFor(field: string): string | undefined {
     return errors.find((item) => item.field === field)?.message;
@@ -91,6 +94,7 @@ function CreatePorch() {
     if (!edit) {
       setReady(true);
       setDenied(false);
+      setMapPin(emptyMapPinDraft());
       return;
     }
     const vendor = loadVendors().find((item) => item.id === edit);
@@ -109,6 +113,7 @@ function CreatePorch() {
     setExistingImage(vendor.image);
     setPhoto("");
     setPayments(paymentDraftFrom(vendor.payments));
+    setMapPin(mapPinDraftFrom(vendor.mapPin));
     setProducts(
       vendor.products.length
         ? vendor.products.map((product) => ({
@@ -161,6 +166,7 @@ function CreatePorch() {
         };
       }),
     payments: parsePaymentHandles(payments).handles,
+    mapPin: sanitizeMapPin(mapPin),
   };
 
   async function onPhoto(file: File | undefined) {
@@ -184,7 +190,7 @@ function CreatePorch() {
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const nextErrors = validatePorchDraft({ name, location, pickup, bio, products, payments, platesThisWeek });
+    const nextErrors = validatePorchDraft({ name, location, pickup, bio, products, payments, platesThisWeek, mapPin });
     setErrors(nextErrors);
     if (nextErrors.length) return;
 
@@ -202,6 +208,7 @@ function CreatePorch() {
       ownerId: existing?.ownerId,
       payments: handles,
       platesThisWeek: parsePlatesThisWeek(platesThisWeek),
+      mapPin: sanitizeMapPin(mapPin),
       products: readyProducts.map((p) => {
         const prior = existing?.products.find((item) => item.id === p.key);
         const offer = isCommunityOffer(p.communityOffer) ? p.communityOffer : undefined;
@@ -342,9 +349,11 @@ function CreatePorch() {
                 aria-invalid={Boolean(errorFor("pickup"))}
               />
               <p className="mt-1.5 text-xs font-normal text-muted">
-                Name the days and hours. We read that into an “open today” badge — no exact street pin.
+                Name the days and hours. We read that into an “open today” badge. A street pin is optional below.
               </p>
             </Field>
+            <PinFields draft={mapPin} onChange={setMapPin} error={errorFor("mapPin") ?? errorFor("hereOn")} />
+
             <Field label="Community plates this week (optional)" error={errorFor("platesThisWeek")}>
               <input
                 className={field}

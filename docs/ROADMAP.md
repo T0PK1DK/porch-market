@@ -9,7 +9,8 @@ This app is still a listing on one phone. Holds are a name on a box. Nothing is 
 - Community kitchen is a mark on an item: Free, Pay what you can, or Donation-backed. A kitchen can also set how many plates they can cover this week. It is not a kitchen network yet.
 - Payment handles are the maker’s own Cash App, Venmo, PayPal.me, or Zelle note. Porch Market does not take money.
 - The feed is local. Seeded posts are marked Example so they are not mistaken for a live city-wide board.
-- Pickup windows are read from the kitchen’s own sentence. Neighborhoods are named places on a stylized block map, not GPS.
+- Pickup windows are read from the kitchen’s own sentence. Neighborhoods are named places on a stylized block map, plus an opt-in street map (MapLibre / OpenFreeMap). Home pins are neighborhood-fuzzed. Truck pins expire tonight.
+- Shops can mark a hold `ready_for_pickup`. Pay stays in the shop. Delivery drivers are phase 3 only — payments, insurance, background checks (`docs/HANDOFF.md`). Do not build them yet.
 
 ## A real shared feed
 
@@ -53,5 +54,7 @@ A next software step, still without a processor, could be a bake-day cutoff time
 - A public donation wall that exposes who received food
 - PIN or passcode gates
 - 3D scenes; this is a listing
+- Driver dispatch, live GPS, or delivery fees
+- Paid map keys (Mapbox, Google)
 
 Build the shared piece when neighbors on different phones should see the same porch, the same feed, or the same kitchen table.

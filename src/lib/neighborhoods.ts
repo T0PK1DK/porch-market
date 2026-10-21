@@ -5,16 +5,19 @@ export type Neighborhood = {
   /** Stylized block-map position, 0–100. */
   x: number;
   y: number;
+  /** Public neighborhood centroid — never a private address. */
+  lat: number;
+  lng: number;
 };
 
 export const NEIGHBORHOODS: Neighborhood[] = [
-  { id: "miami-beach", name: "Miami Beach", aliases: ["miami beach", "south beach", "mid-beach", "midbeach"], x: 86, y: 28 },
-  { id: "little-haiti", name: "Little Haiti", aliases: ["little haiti", "lemon city"], x: 48, y: 22 },
-  { id: "coconut-grove", name: "Coconut Grove", aliases: ["coconut grove", "the grove"], x: 42, y: 58 },
-  { id: "coral-gables", name: "Coral Gables", aliases: ["coral gables", "gables"], x: 32, y: 72 },
-  { id: "little-havana", name: "Little Havana", aliases: ["little havana", "calle ocho"], x: 38, y: 40 },
-  { id: "homestead", name: "Homestead", aliases: ["homestead", "florida city", "redland"], x: 18, y: 88 },
-  { id: "miami", name: "Miami", aliases: ["downtown miami", "brickell", "wynwood", "miami"], x: 58, y: 38 },
+  { id: "miami-beach", name: "Miami Beach", aliases: ["miami beach", "south beach", "mid-beach", "midbeach"], x: 86, y: 28, lat: 25.7907, lng: -80.13 },
+  { id: "little-haiti", name: "Little Haiti", aliases: ["little haiti", "lemon city"], x: 48, y: 22, lat: 25.8324, lng: -80.1912 },
+  { id: "coconut-grove", name: "Coconut Grove", aliases: ["coconut grove", "the grove"], x: 42, y: 58, lat: 25.728, lng: -80.2444 },
+  { id: "coral-gables", name: "Coral Gables", aliases: ["coral gables", "gables"], x: 32, y: 72, lat: 25.75, lng: -80.256 },
+  { id: "little-havana", name: "Little Havana", aliases: ["little havana", "calle ocho"], x: 38, y: 40, lat: 25.7652, lng: -80.2197 },
+  { id: "homestead", name: "Homestead", aliases: ["homestead", "florida city", "redland"], x: 18, y: 88, lat: 25.4687, lng: -80.4776 },
+  { id: "miami", name: "Miami", aliases: ["downtown miami", "brickell", "wynwood", "miami"], x: 58, y: 38, lat: 25.7743, lng: -80.1937 },
 ];
 
 function words(value: string): string[] {

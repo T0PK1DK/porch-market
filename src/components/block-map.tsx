@@ -13,7 +13,7 @@ export function BlockMap({
     <section className="rounded-2xl border border-line bg-card p-3 shadow-card" aria-label="Neighborhoods">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="font-display text-lg text-ink">The block</h2>
-        <p className="text-xs text-muted">Tap a porch on the map</p>
+        <p className="text-xs text-muted">Filter by neighborhood</p>
       </div>
       <svg viewBox="0 0 100 100" className="mt-2 h-auto w-full" role="img" aria-label="South Florida neighborhoods">
         <rect x="0" y="0" width="100" height="100" rx="8" fill="#efe7d6" />
