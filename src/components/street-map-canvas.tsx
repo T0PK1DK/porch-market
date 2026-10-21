@@ -4,10 +4,14 @@ import {
   Map as MapLibreMap,
   Marker,
   NavigationControl,
+  setWorkerUrl,
   type MapMouseEvent,
 } from "maplibre-gl";
+import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { OPENFREEMAP_STYLE, SOUTH_FLORIDA, type PublicMapPin } from "@/lib/geo";
+
+setWorkerUrl(mapWorkerUrl);
 
 const KIND_COLOR: Record<PublicMapPin["kind"], string> = {
   home: "#1e4630",
@@ -62,8 +66,14 @@ export function StreetMapCanvas({
     map.on("click", (event: MapMouseEvent) => {
       onPickRef.current?.({ lat: event.lngLat.lat, lng: event.lngLat.lng });
     });
+    const resize = () => map.resize();
+    map.on("load", resize);
+    map.once("idle", resize);
+    const observer = new ResizeObserver(resize);
+    observer.observe(root.current);
     mapRef.current = map;
     return () => {
+      observer.disconnect();
       markers.current.forEach((marker) => marker.remove());
       markers.current = [];
       pickMarker.current?.remove();
