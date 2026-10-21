@@ -1,19 +1,29 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { BlockMap } from "@/components/block-map";
+import { LawNote } from "@/components/law-note";
 import { Shell } from "@/components/shell";
 import { VendorCard, WeekFoodCard } from "@/components/vendor-card";
 import {
   CATEGORIES,
   COMMUNITY_FILTER,
   isOwnedByThisDevice,
+  loadHolds,
+  loadSavedIds,
   loadVendors,
+  rankVendors,
   SAMPLE_VENDORS,
+  sortVendors,
   thisWeeksFood,
+  toggleSaved,
   vendorMatchesFilter,
+  type Hold,
   type MarketFilter,
   type Vendor,
 } from "@/lib/market";
+import { neighborhoodFromLocation } from "@/lib/neighborhoods";
+import type { MarketSort } from "@/lib/search";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -31,7 +41,7 @@ const STEPS = [
   {
     n: "02",
     title: "Neighbors browse",
-    body: "People nearby filter by farm, fresh, baked, or a meal from the community kitchen.",
+    body: "People nearby filter by farm, fresh, baked, a meal, or who’s open today.",
   },
   {
     n: "03",
@@ -42,30 +52,70 @@ const STEPS = [
 
 function Home() {
   const [vendors, setVendors] = useState<Vendor[]>(SAMPLE_VENDORS);
+  const [holds, setHolds] = useState<Hold[]>([]);
+  const [savedIds, setSavedIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<MarketFilter>("All");
+  const [neighborhood, setNeighborhood] = useState<string | null>(null);
+  const [sort, setSort] = useState<MarketSort>("neighborhood");
 
   useEffect(() => {
     setVendors(loadVendors());
+    setHolds(loadHolds());
+    setSavedIds(loadSavedIds());
   }, []);
 
-  const shown = useMemo(
-    () => vendors.filter((vendor) => vendorMatchesFilter(vendor, category, query)),
-    [vendors, query, category],
+  const extras = useMemo(() => ({ savedIds }), [savedIds]);
+
+  const matched = useMemo(
+    () => rankVendors(
+      vendors.filter((vendor) => vendorMatchesFilter(vendor, category, query, extras)),
+      query,
+    ),
+    [vendors, query, category, extras],
   );
 
-  const weekly = useMemo(() => thisWeeksFood(shown, category), [shown, category]);
-  const filtering = query.trim().length > 0 || category !== "All";
+  const neighborhoodCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const vendor of matched) {
+      const name = neighborhoodFromLocation(vendor.location);
+      counts[name] = (counts[name] ?? 0) + 1;
+    }
+    return counts;
+  }, [matched]);
+
+  const shown = useMemo(() => {
+    const located = neighborhood
+      ? matched.filter((vendor) => neighborhoodFromLocation(vendor.location) === neighborhood)
+      : matched;
+    return sortVendors(located, sort);
+  }, [matched, neighborhood, sort]);
+
+  const weekly = useMemo(() => thisWeeksFood(shown, category === "Saved" || category === "Open today" ? "All" : category), [shown, category]);
+  const filtering = query.trim().length > 0 || category !== "All" || neighborhood != null;
 
   function clearFilters() {
     setQuery("");
     setCategory("All");
+    setNeighborhood(null);
   }
+
+  const grouped = useMemo(() => {
+    if (sort !== "neighborhood") return [{ name: "", items: shown }];
+    const groups: { name: string; items: Vendor[] }[] = [];
+    for (const vendor of shown) {
+      const name = neighborhoodFromLocation(vendor.location);
+      const last = groups[groups.length - 1];
+      if (!last || last.name !== name) groups.push({ name, items: [vendor] });
+      else last.items.push(vendor);
+    }
+    return groups;
+  }, [shown, sort]);
 
   return (
     <Shell>
       <p className="pt-3 text-sm text-muted">
-        Cottage kitchens on the block — browse, then ask for a pickup hold.
+        Cottage kitchens on the block — browse, save a porch, then ask for a pickup hold.
       </p>
 
       <label className="mt-3 flex min-h-11 items-center gap-2 rounded-2xl border border-line bg-card px-3 shadow-card focus-within:border-porch">
@@ -92,6 +142,12 @@ function Home() {
         <FilterChip on={category === "All"} onClick={() => setCategory("All")}>
           All
         </FilterChip>
+        <FilterChip on={category === "Open today"} onClick={() => setCategory("Open today")}>
+          Open today
+        </FilterChip>
+        <FilterChip on={category === "Saved"} onClick={() => setCategory("Saved")}>
+          Saved
+        </FilterChip>
         {CATEGORIES.map((item) => (
           <FilterChip key={item} on={category === item} onClick={() => setCategory(item)}>
             {item}
@@ -100,6 +156,16 @@ function Home() {
         <FilterChip on={category === COMMUNITY_FILTER} onClick={() => setCategory(COMMUNITY_FILTER)}>
           {COMMUNITY_FILTER}
         </FilterChip>
+      </div>
+
+      <div className="mt-3">
+        <BlockMap active={neighborhood} counts={neighborhoodCounts} onSelect={setNeighborhood} />
+        <p className="mt-2 text-sm text-muted">
+          Neighborhood filter only — home pins stay approximate.{" "}
+          <Link to="/map" className="font-medium text-porch hover:underline">
+            Open the street map
+          </Link>
+        </p>
       </div>
 
       {weekly.length > 0 && (
@@ -119,11 +185,25 @@ function Home() {
       )}
 
       <section id="vendors" className="scroll-mt-20 pt-4">
-        <div className="flex items-baseline justify-between gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="font-display text-xl text-ink">Porches</h2>
-          <p className="text-sm text-muted tabular-nums">
-            {shown.length} {shown.length === 1 ? "porch" : "porches"}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-sm text-muted">
+              Sort
+              <select
+                className="rounded-full border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-porch"
+                value={sort}
+                onChange={(e) => setSort(e.target.value as MarketSort)}
+              >
+                <option value="neighborhood">Neighborhood</option>
+                <option value="open">Open today first</option>
+                <option value="name">Name</option>
+              </select>
+            </label>
+            <p className="text-sm text-muted tabular-nums">
+              {shown.length} {shown.length === 1 ? "porch" : "porches"}
+            </p>
+          </div>
         </div>
 
         {shown.length === 0 ? (
@@ -134,11 +214,17 @@ function Home() {
                 ? `No porches match “${query.trim()}” in ${category}.`
                 : query.trim()
                   ? `No porches match “${query.trim()}”.`
-                  : category === COMMUNITY_FILTER
-                    ? "No community kitchen plates on this phone right now."
-                    : category !== "All"
-                      ? `No ${category.toLowerCase()} porches right now.`
-                      : "Try another kitchen, or open yours."}
+                  : category === "Saved"
+                    ? "Save a porch from a card to find it here later."
+                    : category === "Open today"
+                      ? "No listed pickup window falls on today."
+                      : category === COMMUNITY_FILTER
+                        ? "No community kitchen plates on this phone right now."
+                        : category !== "All"
+                          ? `No ${category.toLowerCase()} porches right now.`
+                          : neighborhood
+                            ? `No porches in ${neighborhood} with these filters.`
+                            : "Try another kitchen, or open yours."}
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               {filtering ? (
@@ -160,9 +246,25 @@ function Home() {
             </div>
           </div>
         ) : (
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {shown.map((vendor) => (
-              <VendorCard key={vendor.id} vendor={vendor} owned={isOwnedByThisDevice(vendor)} />
+          <div className="mt-3 space-y-6">
+            {grouped.map((group) => (
+              <div key={group.name || "all"}>
+                {group.name ? (
+                  <h3 className="mb-2 font-display text-lg text-ink">{group.name}</h3>
+                ) : null}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {group.items.map((vendor) => (
+                    <VendorCard
+                      key={vendor.id}
+                      vendor={vendor}
+                      owned={isOwnedByThisDevice(vendor)}
+                      saved={savedIds.includes(vendor.id)}
+                      holds={holds.filter((hold) => hold.vendorId === vendor.id)}
+                      onToggleSaved={(id) => setSavedIds(toggleSaved(id))}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -188,6 +290,10 @@ function Home() {
           ))}
         </ol>
       </section>
+
+      <div className="mt-8">
+        <LawNote />
+      </div>
     </Shell>
   );
 }

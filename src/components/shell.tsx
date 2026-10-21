@@ -7,7 +7,7 @@ function NavLink({
   exact,
   children,
 }: {
-  to: "/" | "/create" | "/feed";
+  to: "/" | "/create" | "/feed" | "/holds" | "/map";
   exact?: boolean;
   children: ReactNode;
 }) {
@@ -36,7 +36,7 @@ export function Shell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <header className="sticky top-0 z-20 border-b border-line bg-paper/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-2">
           <Link to="/" className="flex min-h-11 items-center gap-2.5">
             <span className="grid size-9 place-items-center rounded-lg bg-porch text-paper">
               <House className="size-5" strokeWidth={1.75} aria-hidden="true" />
@@ -45,11 +45,13 @@ export function Shell({ children }: { children: ReactNode }) {
               Porch <span className="text-porch">Market</span>
             </span>
           </Link>
-          <nav className="flex items-center gap-1" aria-label="Primary">
+          <nav className="flex flex-wrap items-center justify-end gap-1" aria-label="Primary">
             <NavLink to="/" exact>
               Browse
             </NavLink>
+            <NavLink to="/map">Map</NavLink>
             <NavLink to="/feed">Feed</NavLink>
+            <NavLink to="/holds">Holds</NavLink>
             <Link
               to="/create"
               search={{}}

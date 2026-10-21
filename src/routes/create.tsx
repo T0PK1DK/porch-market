@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { PinFields } from "@/components/pin-fields";
 import { Shell } from "@/components/shell";
+import { emptyMapPinDraft, mapPinDraftFrom, sanitizeMapPin, type MapPinDraft } from "@/lib/geo";
 import {
   addVendor,
   CATEGORIES,
@@ -9,11 +11,15 @@ import {
   COMMUNITY_KITCHEN_OFFERS,
   emptyPaymentDraft,
   formatPriceInput,
+  DIET_NOTES,
   isCommunityOffer,
   isOwnedByThisDevice,
   loadVendors,
+  parseDietNotes,
   parsePaymentHandles,
+  parsePlatesThisWeek,
   parsePrice,
+  parseStock,
   paymentDraftFrom,
   paymentLinks,
   priceLabel,
@@ -24,6 +30,7 @@ import {
   validatePorchDraft,
   type Category,
   type CommunityKitchenOffer,
+  type DietNote,
   type DraftProduct,
   type FieldError,
   type PaymentDraft,
@@ -50,7 +57,7 @@ export const Route = createFileRoute("/create")({
 });
 
 function blankProduct(category: Category): DraftProduct {
-  return { key: `p-${Date.now().toString(36)}`, name: "", price: "", desc: "", category };
+  return { key: `p-${Date.now().toString(36)}`, name: "", price: "", desc: "", category, stock: "", readyNote: "", dietNotes: [] };
 }
 
 const field =
@@ -67,15 +74,17 @@ function CreatePorch() {
   const [payments, setPayments] = useState<PaymentDraft>(emptyPaymentDraft());
   const [bio, setBio] = useState("");
   const [pickup, setPickup] = useState("");
+  const [platesThisWeek, setPlatesThisWeek] = useState("");
   const [photo, setPhoto] = useState("");
   const [existingImage, setExistingImage] = useState("");
   const [existingId, setExistingId] = useState<string | null>(null);
   const [products, setProducts] = useState<DraftProduct[]>([
-    { key: "p1", name: "", price: "", desc: "", category: "Baked" },
+    { key: "p1", name: "", price: "", desc: "", category: "Baked", stock: "", readyNote: "", dietNotes: [] },
   ]);
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [photoNote, setPhotoNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mapPin, setMapPin] = useState<MapPinDraft>(emptyMapPinDraft());
 
   function errorFor(field: string): string | undefined {
     return errors.find((item) => item.field === field)?.message;
@@ -85,6 +94,7 @@ function CreatePorch() {
     if (!edit) {
       setReady(true);
       setDenied(false);
+      setMapPin(emptyMapPinDraft());
       return;
     }
     const vendor = loadVendors().find((item) => item.id === edit);
@@ -99,9 +109,11 @@ function CreatePorch() {
     setCategory(vendor.category);
     setBio(vendor.bio);
     setPickup(vendor.pickup);
+    setPlatesThisWeek(vendor.platesThisWeek != null ? String(vendor.platesThisWeek) : "");
     setExistingImage(vendor.image);
     setPhoto("");
     setPayments(paymentDraftFrom(vendor.payments));
+    setMapPin(mapPinDraftFrom(vendor.mapPin));
     setProducts(
       vendor.products.length
         ? vendor.products.map((product) => ({
@@ -111,8 +123,11 @@ function CreatePorch() {
             desc: product.desc,
             category: product.category,
             communityOffer: product.communityOffer ?? "",
+            stock: product.stock != null ? String(product.stock) : "",
+            readyNote: product.readyNote ?? "",
+            dietNotes: product.dietNotes ?? [],
           }))
-        : [{ key: "p1", name: "", price: "", desc: "", category: vendor.category }],
+        : [{ key: "p1", name: "", price: "", desc: "", category: vendor.category, stock: "", readyNote: "", dietNotes: [] }],
     );
     setDenied(false);
     setReady(true);
@@ -129,10 +144,14 @@ function CreatePorch() {
     bio: bio.trim() || "A short note about what you make and when the porch is open.",
     image: cover,
     pickup: pickup.trim() || "Pickup window goes here.",
+    platesThisWeek: parsePlatesThisWeek(platesThisWeek),
     products: products
       .filter((p) => p.name.trim())
       .map((p) => {
         const offer = isCommunityOffer(p.communityOffer) ? p.communityOffer : undefined;
+        const stock = parseStock(p.stock ?? "");
+        const dietNotes = parseDietNotes(p.dietNotes);
+        const readyNote = p.readyNote?.trim();
         return {
           id: p.key,
           name: p.name.trim(),
@@ -141,9 +160,13 @@ function CreatePorch() {
           image: CATEGORY_COVER[p.category],
           category: p.category,
           ...(offer ? { communityOffer: offer } : {}),
+          ...(stock !== null ? { stock } : {}),
+          ...(readyNote ? { readyNote } : {}),
+          ...(dietNotes.length ? { dietNotes } : {}),
         };
       }),
     payments: parsePaymentHandles(payments).handles,
+    mapPin: sanitizeMapPin(mapPin),
   };
 
   async function onPhoto(file: File | undefined) {
@@ -167,7 +190,7 @@ function CreatePorch() {
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const nextErrors = validatePorchDraft({ name, location, pickup, bio, products, payments });
+    const nextErrors = validatePorchDraft({ name, location, pickup, bio, products, payments, platesThisWeek, mapPin });
     setErrors(nextErrors);
     if (nextErrors.length) return;
 
@@ -184,9 +207,14 @@ function CreatePorch() {
       pickup: pickup.trim(),
       ownerId: existing?.ownerId,
       payments: handles,
+      platesThisWeek: parsePlatesThisWeek(platesThisWeek),
+      mapPin: sanitizeMapPin(mapPin),
       products: readyProducts.map((p) => {
         const prior = existing?.products.find((item) => item.id === p.key);
         const offer = isCommunityOffer(p.communityOffer) ? p.communityOffer : undefined;
+        const stock = parseStock(p.stock ?? "");
+        const dietNotes = parseDietNotes(p.dietNotes);
+        const readyNote = p.readyNote?.trim();
         return {
           id: p.key,
           name: p.name.trim(),
@@ -195,6 +223,9 @@ function CreatePorch() {
           image: prior?.image || CATEGORY_COVER[p.category],
           category: p.category,
           ...(offer ? { communityOffer: offer } : {}),
+          ...(stock !== null ? { stock } : {}),
+          ...(readyNote ? { readyNote } : {}),
+          ...(dietNotes.length ? { dietNotes } : {}),
         };
       }),
     };
@@ -317,6 +348,24 @@ function CreatePorch() {
                 placeholder="Saturdays, 9am–noon, front porch"
                 aria-invalid={Boolean(errorFor("pickup"))}
               />
+              <p className="mt-1.5 text-xs font-normal text-muted">
+                Name the days and hours. We read that into an “open today” badge. A street pin is optional below.
+              </p>
+            </Field>
+            <PinFields draft={mapPin} onChange={setMapPin} error={errorFor("mapPin") ?? errorFor("hereOn")} />
+
+            <Field label="Community plates this week (optional)" error={errorFor("platesThisWeek")}>
+              <input
+                className={field}
+                inputMode="numeric"
+                value={platesThisWeek}
+                onChange={(e) => setPlatesThisWeek(e.target.value)}
+                placeholder="12"
+                aria-invalid={Boolean(errorFor("platesThisWeek"))}
+              />
+              <p className="mt-1.5 text-xs font-normal text-muted">
+                For a community kitchen: how many plates you can cover. Not a public tally of who came hungry.
+              </p>
             </Field>
             <Field label="Cover photo (optional)">
               <input
@@ -411,6 +460,52 @@ function CreatePorch() {
                         Free, pay what you can, or donation-backed plates show up under Community kitchen.
                       </p>
                     </Field>
+                    <Field label="How many this week (optional)" error={errorFor(`stock:${product.key}`)}>
+                      <input
+                        className={field}
+                        inputMode="numeric"
+                        value={product.stock ?? ""}
+                        onChange={(e) => updateProduct(product.key, { stock: e.target.value })}
+                        placeholder="8"
+                        aria-invalid={Boolean(errorFor(`stock:${product.key}`))}
+                      />
+                    </Field>
+                    <Field label="Ready note (optional)">
+                      <input
+                        className={field}
+                        value={product.readyNote ?? ""}
+                        onChange={(e) => updateProduct(product.key, { readyNote: e.target.value })}
+                        placeholder="Out of the oven at 9am"
+                      />
+                    </Field>
+                    <fieldset className="mt-4">
+                      <legend className="text-sm font-medium text-ink">Dietary notes</legend>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {DIET_NOTES.map((note) => {
+                          const on = (product.dietNotes ?? []).includes(note);
+                          return (
+                            <button
+                              key={note}
+                              type="button"
+                              aria-pressed={on}
+                              className={
+                                "inline-flex min-h-11 items-center rounded-full px-3 text-sm font-medium " +
+                                (on ? "bg-porch text-paper" : "bg-foam text-ink")
+                              }
+                              onClick={() => {
+                                const current = product.dietNotes ?? [];
+                                const next: DietNote[] = on
+                                  ? current.filter((item) => item !== note)
+                                  : [...current, note];
+                                updateProduct(product.key, { dietNotes: next });
+                              }}
+                            >
+                              {note}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
                     <Field label="Description">
                       <textarea
                         className={field}
