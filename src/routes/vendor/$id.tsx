@@ -256,6 +256,11 @@ function Storefront() {
               </div>
             ) : null}
             <p className="mt-4 max-w-xl text-lg text-ink">{vendor.bio}</p>
+            {vendor.products.length === 0 ? (
+              <div className="mt-4">
+                <EmptyNote copy={emptyShelfCopy()} compact />
+              </div>
+            ) : null}
           </div>
           <aside className="h-fit rounded-2xl border border-line bg-card p-4 shadow-card">
             <p className="flex items-start gap-2 text-sm text-ink">
@@ -414,8 +419,10 @@ function Storefront() {
           </section>
         ) : null}
 
-        <h2 className="mt-8 font-display text-3xl text-ink">{productShelfHeading()}</h2>
-        {cutoff && !cutoff.accepting ? (
+        {vendor.products.length > 0 ? (
+          <h2 className="mt-8 font-display text-3xl text-ink">{productShelfHeading()}</h2>
+        ) : null}
+        {cutoff && !cutoff.accepting && !formError ? (
           <p className="mt-2 rounded-2xl bg-foam px-4 py-3 text-sm text-ink">
             {cutoff.label}. {cutoffClosedNote(cutoff)}
           </p>
@@ -425,7 +432,7 @@ function Storefront() {
             {formError}
           </p>
         ) : null}
-        {vendor.products.length === 0 ? <EmptyNote copy={emptyShelfCopy()} compact /> : null}
+        {vendor.products.length > 0 ? (
         <ul className="mt-4 grid gap-3">
           {vendor.products.map((product, index) => {
             const open = activeId === product.id;
@@ -456,7 +463,7 @@ function Storefront() {
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       <CommunityBadge offer={product.communityOffer} />
-                      <StockPill remaining={left} />
+                      {soldOut ? null : <StockPill remaining={left} />}
                     </div>
                     {open ? null : (
                       <>
@@ -554,6 +561,7 @@ function Storefront() {
             );
           })}
         </ul>
+        ) : null}
 
         <div className="mt-8">
           <LawNote />

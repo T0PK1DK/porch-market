@@ -16,7 +16,7 @@ export function PorchCardSkeleton() {
 
 export function StorefrontSkeleton() {
   return (
-    <div className="pt-4" aria-busy="true" aria-live="polite">
+    <div className="min-h-[70vh] pt-4" aria-busy="true" aria-live="polite">
       <span className="sr-only">Looking up this porch</span>
       <div className="skeleton h-4 w-24 rounded-full" />
       <div className="skeleton mt-3 aspect-[16/9] rounded-2xl" />
