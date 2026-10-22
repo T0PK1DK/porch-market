@@ -39,10 +39,10 @@ export function ConfirmTicket({
     <div
       id={`hold-ticket-${hold.id}`}
       role="status"
-      className="ticket mt-4 scroll-mt-24 px-4 py-3 text-ink"
+      className="ticket rise mt-4 scroll-mt-24 px-4 py-3 text-ink"
     >
-      <p className="font-display text-xl leading-snug">{holdTicketHeadline(pickup, orderAhead)}</p>
-      <p className="mt-1 text-sm">
+      <p className="break-words font-display text-xl leading-snug">{holdTicketHeadline(pickup, orderAhead)}</p>
+      <p className="mt-1 break-words text-sm">
         Held for {hold.buyerName}
         {hold.qty > 1 ? ` · ${hold.qty} × ` : " · "}
         {hold.productName}
@@ -110,19 +110,17 @@ export function BoardTicket({
   });
 
   return (
-    <li className="ticket p-4 shadow-card">
+    <li className="ticket rise p-4 shadow-card">
       <div className="flex gap-3">
-        {product ? (
-          <div className="photo-frame w-16 shrink-0 self-start">
-            <Cover src={product.image} alt="" width={96} height={96} className="aspect-square" />
-          </div>
-        ) : null}
+        <div className="photo-frame w-16 shrink-0 self-start">
+          <Cover src={product?.image ?? ""} alt="" width={96} height={96} className="aspect-square" />
+        </div>
         <div className="min-w-0 flex-1">
-          <p className="font-display text-xl leading-tight text-ink">
+          <p className="line-clamp-2 break-words font-display text-xl leading-tight text-ink">
             {hold.qty > 1 ? `${hold.qty} × ` : ""}
             {hold.productName}
           </p>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 break-words text-sm text-muted">
             {hold.buyerName}
             {hold.note ? ` — ${hold.note}` : ""}
           </p>

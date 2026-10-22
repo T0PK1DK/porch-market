@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { MapPin, Star } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PinKindChip } from "@/components/pin-badge";
 import { DietPills, OrderByPill, PickupPill, StockPill } from "@/components/status";
 import {
@@ -16,6 +16,7 @@ import {
   type Vendor,
   type WeekFood,
 } from "@/lib/market";
+import { hasDisplayPhoto } from "@/lib/hold-ui";
 import { neighborhoodFromLocation } from "@/lib/neighborhoods";
 import { pickupBadge } from "@/lib/pickup";
 
@@ -79,6 +80,10 @@ export function Cover({
   lazy?: boolean;
 }) {
   const [ok, setOk] = useState(true);
+  useEffect(() => {
+    setOk(true);
+  }, [src]);
+  const show = hasDisplayPhoto(src) && ok;
   const size = photoSize(src);
   const w = width ?? size.width;
   const h = height ?? size.height;
@@ -88,7 +93,7 @@ export function Cover({
       className={`overflow-hidden bg-foam ${className ?? ""}`}
       style={sized ? undefined : { aspectRatio: `${w} / ${h}` }}
     >
-      {ok ? (
+      {show ? (
         <img
           src={src}
           alt={alt}
@@ -156,7 +161,7 @@ export function VendorCard({
               </span>
             ) : null}
           </div>
-          <h3 className="font-display text-xl leading-tight text-ink">{vendor.name}</h3>
+          <h3 className="line-clamp-2 break-words font-display text-xl leading-tight text-ink">{vendor.name}</h3>
           {vendorHasCommunityKitchen(vendor) ? (
             <p className="mt-1">
               <span className="inline-flex items-center rounded-full bg-foam px-2 py-0.5 text-[11px] font-medium text-porch">
@@ -225,7 +230,7 @@ export function WeekFoodCard({ item, lazy }: { item: WeekFood; lazy: boolean }) 
     <Link
       to="/vendor/$id"
       params={{ id: item.vendorId }}
-      className="w-[8.75rem] shrink-0 snap-start sm:w-40"
+      className="min-h-11 w-[8.75rem] shrink-0 snap-start sm:w-40"
     >
       <div className="photo-frame">
         <Cover
@@ -238,7 +243,7 @@ export function WeekFoodCard({ item, lazy }: { item: WeekFood; lazy: boolean }) 
         />
         <span className="price-tag text-[11px]">{priceLabel(item.product)}</span>
       </div>
-      <p className="mt-2 truncate font-display text-base leading-tight text-ink">{item.product.name}</p>
+      <p className="mt-2 line-clamp-2 break-words font-display text-base leading-tight text-ink">{item.product.name}</p>
       <p className="truncate text-xs text-muted">{item.vendorName}</p>
       <div className="hidden sm:block">
         <DietPills notes={item.product.dietNotes} limit={2} />
