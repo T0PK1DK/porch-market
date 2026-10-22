@@ -5,6 +5,7 @@ import { BlockMap } from "@/components/block-map";
 import { LawNote } from "@/components/law-note";
 import { Shell } from "@/components/shell";
 import { EmptyNote } from "@/components/empty-note";
+import { PorchCardSkeleton, WeekRowSkeleton } from "@/components/skeleton";
 import { VendorCard, WeekFoodCard } from "@/components/vendor-card";
 import { browseEmptyCopy } from "@/lib/hold-ui";
 import {
@@ -60,11 +61,13 @@ function Home() {
   const [category, setCategory] = useState<MarketFilter>("All");
   const [neighborhood, setNeighborhood] = useState<string | null>(null);
   const [sort, setSort] = useState<MarketSort>("neighborhood");
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     setVendors(loadVendors());
     setHolds(loadHolds());
     setSavedIds(loadSavedIds());
+    setReady(true);
   }, []);
 
   const extras = useMemo(() => ({ savedIds }), [savedIds]);
@@ -172,7 +175,14 @@ function Home() {
         </div>
       ) : null}
 
-      {weekly.length > 0 && (
+      {!ready ? (
+        <section className="mt-4" aria-busy="true">
+          <h2 className="font-display text-xl text-ink">This week</h2>
+          <div className="mt-2">
+            <WeekRowSkeleton />
+          </div>
+        </section>
+      ) : weekly.length > 0 ? (
         <section className="mt-4" aria-labelledby="week-heading">
           <div className="flex items-baseline justify-between gap-3">
             <h2 id="week-heading" className="font-display text-xl text-ink">
@@ -186,7 +196,7 @@ function Home() {
             ))}
           </div>
         </section>
-      )}
+      ) : null}
 
       <section id="vendors" className="scroll-mt-20 pt-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -210,7 +220,12 @@ function Home() {
           </div>
         </div>
 
-        {shown.length === 0 ? (
+        {!ready ? (
+          <div className="mt-3 grid gap-3" aria-busy="true">
+            <PorchCardSkeleton />
+            <PorchCardSkeleton />
+          </div>
+        ) : shown.length === 0 ? (
           <div>
             <EmptyNote
               copy={browseEmptyCopy({ query, category, neighborhood })}

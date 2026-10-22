@@ -1,7 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { EmptyNote } from "@/components/empty-note";
 import { Shell } from "@/components/shell";
+import { TicketSkeleton } from "@/components/skeleton";
 import { Cover } from "@/components/vendor-card";
+import { emptyFeedCopy } from "@/lib/hold-ui";
 import {
   addFeedPost,
   EXAMPLE_FEED,
@@ -95,7 +98,11 @@ function FeedPage() {
           posts stay marked so they don’t look like live news.
         </p>
 
-        {ready && mine.length > 0 ? (
+        {!ready ? (
+          <div className="mt-5" aria-busy="true">
+            <TicketSkeleton />
+          </div>
+        ) : mine.length > 0 ? (
           <form onSubmit={submit} className="mt-5 rounded-2xl border border-line bg-card p-4 shadow-card">
             <label className="block text-sm font-medium text-ink">
               Which porch?
@@ -156,6 +163,7 @@ function FeedPage() {
           </p>
         )}
 
+        {ready && posts.length === 0 ? <EmptyNote copy={emptyFeedCopy()} /> : null}
         <ol className="mt-6 space-y-3">
           {posts.map((post) => (
             <li key={post.id}>
@@ -169,7 +177,7 @@ function FeedPage() {
                 ) : null}
                 <div className="p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-display text-xl text-ink">{post.vendorName}</p>
+                    <p className="line-clamp-2 break-words font-display text-xl text-ink">{post.vendorName}</p>
                     {post.example ? (
                       <span className="inline-flex items-center rounded-full bg-foam px-2 py-0.5 text-[11px] font-medium text-muted">
                         Example

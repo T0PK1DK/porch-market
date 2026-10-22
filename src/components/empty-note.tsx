@@ -29,7 +29,7 @@ export function EmptyNote({
 
   if (compact) {
     return (
-      <div className="mt-2 rounded-2xl bg-foam px-4 py-4">
+      <div className="fade-in mt-2 rounded-2xl bg-foam px-4 py-4">
         <p className="font-display text-xl text-ink">{copy.title}</p>
         <p className="mt-1 text-sm text-muted">{copy.body}</p>
         {action}
@@ -38,7 +38,7 @@ export function EmptyNote({
   }
 
   return (
-    <div className="mt-3 rounded-2xl border border-dashed border-line bg-card px-5 py-8 text-center">
+    <div className="fade-in mt-3 rounded-2xl border border-dashed border-line bg-card px-5 py-8 text-center">
       <p className="font-display text-2xl text-ink">{copy.title}</p>
       <p className="mt-2 text-sm text-muted">{copy.body}</p>
       {action}

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { EmptyNote } from "@/components/empty-note";
 import { BoardTicket } from "@/components/hold-ticket";
 import { Shell } from "@/components/shell";
+import { TicketSkeleton } from "@/components/skeleton";
 import { holdsEmptyCopy } from "@/lib/hold-ui";
 import {
   isHoldOpen,
@@ -27,10 +28,12 @@ function HoldsPage() {
   const [vendors, setVendors] = useState<Vendor[]>(SAMPLE_VENDORS);
   const [holds, setHolds] = useState<Hold[]>([]);
   const [askingCancel, setAskingCancel] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     setVendors(loadVendors());
     setHolds(loadHolds());
+    setReady(true);
   }, []);
 
   const mine = useMemo(() => vendors.filter(isOwnedByThisDevice), [vendors]);
@@ -51,7 +54,11 @@ function HoldsPage() {
 
         <section className="mt-6">
           <h2 className="font-display text-2xl text-ink">Your holds</h2>
-          {neighbor.length === 0 ? (
+          {!ready ? (
+            <div className="mt-3" aria-busy="true">
+              <TicketSkeleton />
+            </div>
+          ) : neighbor.length === 0 ? (
             <EmptyNote copy={empty.yours} compact />
           ) : (
             <TicketList
@@ -67,7 +74,7 @@ function HoldsPage() {
           )}
         </section>
 
-        {mine.length > 0 ? (
+        {ready && mine.length > 0 ? (
           <section className="mt-8">
             <h2 className="font-display text-2xl text-ink">Kitchen tickets</h2>
             {kitchen.length === 0 ? (
@@ -87,7 +94,7 @@ function HoldsPage() {
               />
             )}
           </section>
-        ) : (
+        ) : ready ? (
           <p className="mt-8 text-sm text-muted">
             Baking this week?{" "}
             <Link to="/create" search={{}} className="font-medium text-porch hover:underline">
@@ -95,14 +102,14 @@ function HoldsPage() {
             </Link>{" "}
             to see incoming tickets.
           </p>
-        )}
+        ) : null}
 
         {done.length > 0 ? (
           <section className="mt-8">
             <h2 className="font-display text-2xl text-ink">Already handled</h2>
             <ul className="mt-3 space-y-2">
               {done.map((hold) => (
-                <li key={hold.id} className="rounded-2xl border border-line bg-card px-4 py-3 text-sm text-muted">
+                <li key={hold.id} className="break-words rounded-2xl border border-line bg-card px-4 py-3 text-sm text-muted">
                   <span className="font-medium text-ink">{hold.productName}</span>
                   {" · "}
                   {hold.buyerName}
