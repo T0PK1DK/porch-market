@@ -4,16 +4,26 @@ import {
   browseEmptyCopy,
   cancelHoldPrompt,
   clampHoldQty,
+  copyFailedNote,
   cutoffClosedNote,
+  emptyFeedCopy,
+  emptyShelfCopy,
   formatHoldMoney,
+  hasDisplayPhoto,
   holdEstimate,
+  holdFormClosedCopy,
+  holdFormGate,
   holdNameError,
   holdStatusPhrase,
   holdTicketHeadline,
+  holdWatchDelayMs,
   holdsEmptyCopy,
   missingPorchCopy,
+  nextHoldFormState,
   productShelfHeading,
+  qtyDroppedNote,
   savedEmptyCopy,
+  shortLabel,
   stepHoldQty,
 } from "./hold-ui.ts";
 
@@ -110,5 +120,54 @@ describe("hold copy", () => {
     );
     assert.match(browseEmptyCopy({ query: "", category: "Open today", neighborhood: null }).body, /today/);
     assert.equal(browseEmptyCopy({ query: "", category: "All", neighborhood: null }).actionTo, "/create");
+  });
+});
+
+describe("hold form watch", () => {
+  it("closes the form when the last loaf goes or the cutoff hits", () => {
+    assert.equal(holdFormGate({ remaining: 2, accepting: true }), "open");
+    assert.equal(holdFormGate({ remaining: 0, accepting: true }), "sold_out");
+    assert.equal(holdFormGate({ remaining: 3, accepting: false }), "cutoff");
+    assert.equal(holdFormGate({ remaining: null, accepting: true }), "open");
+
+    const gone = nextHoldFormState({ remaining: 0, accepting: true, qty: 2 });
+    assert.equal(gone.shouldClose, true);
+    assert.equal(gone.note, "That one just went. Spoken for this week.");
+
+    const late = nextHoldFormState({ remaining: 4, accepting: false, qty: 1 });
+    assert.equal(late.shouldClose, true);
+    assert.match(late.note ?? "", /order-by time just passed/);
+    assert.equal(holdFormClosedCopy("open"), null);
+
+    const drop = nextHoldFormState({ remaining: 1, accepting: true, qty: 3 });
+    assert.equal(drop.shouldClose, false);
+    assert.equal(drop.qty, 1);
+    assert.equal(drop.note, "Only 1 left this week. We dropped the count.");
+    assert.equal(qtyDroppedNote(1, 1), null);
+  });
+
+  it("arms a short timer only when the cutoff is within the hour", () => {
+    const now = new Date(2026, 9, 22, 19, 30);
+    const soon = new Date(2026, 9, 22, 20, 0);
+    const later = new Date(2026, 9, 23, 20, 0);
+    const delay = holdWatchDelayMs(soon, now);
+    assert.ok(delay != null && delay > 0 && delay < 31 * 60 * 1000);
+    assert.equal(holdWatchDelayMs(later, now), null);
+    assert.equal(holdWatchDelayMs(now, now), 0);
+  });
+});
+
+describe("labels and photos", () => {
+  it("clips a long name and treats a blank src as no photo", () => {
+    assert.equal(shortLabel("  Lime  loaf  "), "Lime loaf");
+    assert.equal(shortLabel("A".repeat(60), 12), `${"A".repeat(11)}…`);
+    assert.equal(hasDisplayPhoto("/photos/bread.webp"), true);
+    assert.equal(hasDisplayPhoto(""), false);
+    assert.equal(hasDisplayPhoto("   "), false);
+    assert.equal(hasDisplayPhoto("none"), false);
+    assert.equal(hasDisplayPhoto(undefined), false);
+    assert.equal(copyFailedNote().startsWith("Couldn't copy"), true);
+    assert.equal(emptyShelfCopy().title, "Nothing on the table");
+    assert.equal(emptyFeedCopy().actionTo, "/create");
   });
 });

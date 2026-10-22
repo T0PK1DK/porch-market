@@ -174,3 +174,88 @@ export function missingPorchCopy(): EmptyCopy {
     actionTo: "/",
   };
 }
+
+export type HoldFormGate = "open" | "sold_out" | "cutoff";
+
+export function holdFormGate(input: { remaining: number | null; accepting: boolean }): HoldFormGate {
+  if (!input.accepting) return "cutoff";
+  if (input.remaining === 0) return "sold_out";
+  return "open";
+}
+
+export function holdFormClosedCopy(gate: HoldFormGate): string | null {
+  if (gate === "sold_out") return "That one just went. Spoken for this week.";
+  if (gate === "cutoff") return "The order-by time just passed. Holds reopen after this week's pickup.";
+  return null;
+}
+
+export function qtyDroppedNote(requested: number, remaining: number | null): string | null {
+  if (remaining == null) return null;
+  if (remaining <= 0) return holdFormClosedCopy("sold_out");
+  if (requested > remaining) return `Only ${remaining} left this week. We dropped the count.`;
+  return null;
+}
+
+export function nextHoldFormState(input: {
+  remaining: number | null;
+  accepting: boolean;
+  qty: number;
+}): { gate: HoldFormGate; qty: number; note: string | null; shouldClose: boolean } {
+  const gate = holdFormGate(input);
+  if (gate === "sold_out") {
+    return { gate, qty: 0, note: holdFormClosedCopy(gate), shouldClose: true };
+  }
+  if (gate === "cutoff") {
+    return { gate, qty: input.qty, note: holdFormClosedCopy(gate), shouldClose: true };
+  }
+  const qty = clampHoldQty(input.qty, input.remaining);
+  return {
+    gate,
+    qty,
+    note: qty !== input.qty ? qtyDroppedNote(input.qty, input.remaining) : null,
+    shouldClose: false,
+  };
+}
+
+/** How long to wait to re-check the bake window. Null means not soon enough to arm. */
+export function holdWatchDelayMs(nextDue: Date, now = new Date()): number | null {
+  const ms = nextDue.getTime() - now.getTime();
+  if (!Number.isFinite(ms)) return null;
+  if (ms <= 0) return 0;
+  if (ms > 60 * 60 * 1000) return null;
+  return ms + 40;
+}
+
+export function hasDisplayPhoto(src?: string | null): boolean {
+  if (typeof src !== "string") return false;
+  const value = src.trim();
+  if (!value) return false;
+  if (value === "none" || value === "null" || value === "undefined") return false;
+  return true;
+}
+
+export function shortLabel(name: string, max = 48): string {
+  const text = name.replace(/\s+/g, " ").trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, Math.max(1, max - 1)).trimEnd()}…`;
+}
+
+export function copyFailedNote(): string {
+  return "Couldn't copy. Select the address bar instead.";
+}
+
+export function emptyShelfCopy(): EmptyCopy {
+  return {
+    title: "Nothing on the table",
+    body: "This porch has not listed a bake yet.",
+  };
+}
+
+export function emptyFeedCopy(): EmptyCopy {
+  return {
+    title: "Quiet on this phone",
+    body: "Open a porch to post an update. Example notes stay marked so they do not look live.",
+    action: "Open a porch",
+    actionTo: "/create",
+  };
+}
