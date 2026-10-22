@@ -10,6 +10,7 @@ export function HoldForm({
   note,
   qty,
   formError,
+  watchNote,
   onBuyerName,
   onNote,
   onQty,
@@ -23,6 +24,7 @@ export function HoldForm({
   note: string;
   qty: number;
   formError: string;
+  watchNote?: string;
   onBuyerName: (value: string) => void;
   onNote: (value: string) => void;
   onQty: (value: number) => void;
@@ -40,7 +42,7 @@ export function HoldForm({
   return (
     <form
       ref={formRef}
-      className="ticket mt-4 grid scroll-mt-24 scroll-mb-24 gap-3 p-4 sm:grid-cols-2 [@media(max-height:480px)]:grid-cols-1"
+      className="ticket rise mt-4 grid scroll-mt-24 scroll-mb-24 gap-3 p-4 sm:grid-cols-2 [@media(max-height:480px)]:grid-cols-1"
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit();
@@ -54,6 +56,7 @@ export function HoldForm({
           onChange={(e) => onBuyerName(e.target.value)}
           placeholder="What the kitchen should write"
           autoComplete="name"
+          maxLength={80}
           aria-invalid={Boolean(formError)}
         />
       </label>
@@ -90,9 +93,15 @@ export function HoldForm({
           value={note}
           onChange={(e) => onNote(e.target.value)}
           placeholder="Two loaves, sliced if you can"
+          maxLength={140}
         />
       </label>
       <p className="text-sm text-muted sm:col-span-2">{estimate.label}. Nothing is charged here.</p>
+      {watchNote && !formError ? (
+        <p role="status" className="text-sm text-mango sm:col-span-2">
+          {watchNote}
+        </p>
+      ) : null}
       {formError ? (
         <p role="alert" className="text-sm text-mango sm:col-span-2">
           {formError}
