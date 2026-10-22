@@ -120,6 +120,18 @@ Shipped on top of the map / order-ahead work. Still local-only. No deploy, no ac
 - Phone ~390px: bottom nav, browse chips, a baker card showing the cutoff, storefront aside, Open a porch order-by field.
 - Confirm sample kitchens still have **no invented payment handles**.
 
+## Pass — overnight polish (product cards, hold form, hold board)
+
+Visual and copy pass at 390px portrait and landscape. **Bake-day cutoff and `placeHold` are unchanged.**
+
+- Product cards use a snapshot frame and a kraft price tag. Ready notes are in italic Fraunces.
+- The storefront list is “On the table this week.” After the cutoff, a closed note replaces the disabled green button.
+- The hold form uses a − / + stepper (capped at what’s left), an optional note, and a paid-at-pickup estimate. The app’s own name message is used — no browser required popup. Confirmation is a ticket under the item, with the pickup window first.
+- The hold board lists your holds first, with photo and pickup. Cancel asks once. Kitchen tickets only show if this phone opened a porch.
+- Saved empty no longer offers “Open a porch.” Landscape shortens the block map, caps the street map, and hides the browse intro.
+
+Helpers and tests: `src/lib/hold-ui.ts`, `src/lib/hold-ui.test.ts`.
+
 ### Safe next steps (pick one)
 
 1. Expire stale “ready at 4pm” **feed** posts so the board does not lie — still local.
