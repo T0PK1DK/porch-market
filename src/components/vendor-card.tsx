@@ -225,21 +225,21 @@ export function WeekFoodCard({ item, lazy }: { item: WeekFood; lazy: boolean }) 
     <Link
       to="/vendor/$id"
       params={{ id: item.vendorId }}
-      className="w-[8.5rem] shrink-0 snap-start sm:w-40"
+      className="w-[8.75rem] shrink-0 snap-start sm:w-40"
     >
-      <Cover
-        src={item.product.image}
-        alt=""
-        width={200}
-        height={200}
-        lazy={lazy}
-        className="aspect-square rounded-2xl border border-line bg-card shadow-card"
-      />
-      <p className="mt-2 truncate text-sm font-medium text-ink">{item.product.name}</p>
-      <p className="flex items-baseline justify-between gap-2 text-xs">
-        <span className="truncate text-muted">{item.vendorName}</span>
-        <span className="shrink-0 font-medium text-mango tabular-nums">{priceLabel(item.product)}</span>
-      </p>
+      <div className="photo-frame">
+        <Cover
+          src={item.product.image}
+          alt=""
+          width={200}
+          height={200}
+          lazy={lazy}
+          className="aspect-square"
+        />
+        <span className="price-tag text-[11px]">{priceLabel(item.product)}</span>
+      </div>
+      <p className="mt-2 truncate font-display text-base leading-tight text-ink">{item.product.name}</p>
+      <p className="truncate text-xs text-muted">{item.vendorName}</p>
       <div className="hidden sm:block">
         <DietPills notes={item.product.dietNotes} limit={2} />
       </div>

@@ -60,7 +60,7 @@ export function Shell({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <header className="sticky top-0 z-20 border-b border-line bg-paper/90 backdrop-blur-md">
+      <header className="site-header sticky top-0 z-20 border-b border-line bg-paper/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2">
           <Link to="/" className="flex min-h-11 items-center gap-2.5">
             <span className="grid size-9 place-items-center rounded-lg bg-porch text-paper">

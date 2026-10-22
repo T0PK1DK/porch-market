@@ -15,7 +15,12 @@
   --color-mango: #c2410c;
   --color-mango-deep: #9a3412;
 
+  --color-kraft: #e4c48a;
+  --color-kraft-ink: #5c3d16;
+  --color-stitch: #d4c6ad;
+
   --shadow-card: 0 1px 2px rgb(28 25 21 / 0.05), 0 12px 32px rgb(28 25 21 / 0.06);
+  --shadow-frame: 0 1px 1px rgb(28 25 21 / 0.05), 0 10px 22px rgb(28 25 21 / 0.07);
 }
 
 @layer base {
@@ -26,11 +31,86 @@
   }
 
   body {
-    background: var(--color-paper);
+    background-color: var(--color-paper);
+    background-image: radial-gradient(rgb(28 25 21 / 0.04) 0.65px, transparent 0.75px);
+    background-size: 7px 7px;
     color: var(--color-ink);
     font-family: var(--font-sans);
     line-height: 1.5;
     overflow-x: clip;
+  }
+
+  .photo-frame {
+    position: relative;
+    background: var(--color-card);
+    padding: 0.3rem 0.3rem 0.7rem;
+    border: 1px solid var(--color-line);
+    box-shadow: var(--shadow-frame);
+  }
+
+  .photo-frame img,
+  .photo-frame .block {
+    display: block;
+  }
+
+  .price-tag {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 0.12rem 0.45rem;
+    background: var(--color-kraft);
+    color: var(--color-kraft-ink);
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 620;
+    line-height: 1.2;
+    white-space: nowrap;
+    box-shadow: 0 1px 0 rgb(28 25 21 / 0.08);
+    transform: rotate(-1.5deg);
+  }
+
+  .photo-frame .price-tag {
+    position: absolute;
+    right: 0.2rem;
+    bottom: 0.28rem;
+  }
+
+  .ticket {
+    background:
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 10px,
+        rgb(28 25 21 / 0.035) 10px,
+        rgb(28 25 21 / 0.035) 11px
+      ),
+      var(--color-card);
+    border: 1px dashed var(--color-stitch);
+  }
+
+  .ready-note {
+    font-family: var(--font-display);
+    font-style: italic;
+  }
+
+  .qty-stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    border: 1px solid var(--color-line);
+    background: var(--color-card);
+    border-radius: 999px;
+    padding: 0.15rem;
+  }
+
+  @media (max-height: 480px) {
+    .site-header {
+      padding-block: 0.1rem;
+    }
+
+    .site-intro {
+      display: none;
+    }
   }
 
   h1,
