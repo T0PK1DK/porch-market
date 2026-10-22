@@ -126,3 +126,17 @@ Shipped on top of the map / order-ahead work. Still local-only. No deploy, no ac
 2. Distinct product photos on the create form (already have cover upload).
 3. Let a truck owner nudge today’s pin without rewriting the whole porch — still local, still expires tonight.
 4. Cross-phone sync needs accounts — see `docs/ROADMAP.md`. Do not start that unless the ask names accounts.
+
+---
+
+## Pass — warm, handmade storefront polish
+
+Visual and UX only. Order, hold, stock, and cutoff logic in `src/lib/` are unchanged.
+
+- Kraft price tags (`.price-tag`), tilted photo frames, and a handwritten accent (Caveat, `.hand`) for ready notes and kitchen notes.
+- Storefront items are separate cards titled “On the table this week”. The hold form has a − / + stepper capped at what is left (no browser validation bubble), an optional note, an estimated total paid at pickup, and a “Never mind” exit.
+- The hold confirmation is a ticket shown under the item you held, scrolled into view, with the pickup window as the headline.
+- `/holds` is now “Your holds”: neighbor holds first, with photo, total, note, and pickup window. Kitchen tickets show only on a phone that opened a porch. Cancel asks once before it removes a hold.
+- After the cutoff, items show “Holds reopen after this week’s pickup” instead of a disabled button, and a single closed banner explains why.
+- Empty states (no saved porches, no holds, no tickets) each have one line and one next step.
+- Before/after phone screenshots: `docs/pr/porch-polish/`.

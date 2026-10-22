@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { MapPin, Star } from "lucide-react";
+import { ArrowRight, MapPin, Star } from "lucide-react";
 import { useState } from "react";
 import { PinKindChip } from "@/components/pin-badge";
 import { DietPills, OrderByPill, PickupPill, StockPill } from "@/components/status";
@@ -38,7 +38,9 @@ export function PayMakerLinks({
   if (!links.length) return null;
   return (
     <div className={compact ? "mt-2" : "mt-3"}>
-      <p className="text-xs font-medium tracking-wide text-muted uppercase">Pay the maker directly</p>
+      <p className="text-xs font-medium tracking-wide text-muted uppercase">
+        Pay the maker directly
+      </p>
       <ul className="mt-1.5 flex flex-wrap gap-2">
         {links.map((link) => (
           <li key={link.kind}>
@@ -125,7 +127,7 @@ export function VendorCard({
   const badge = pickupBadge(vendor.pickup);
   const cutoff = bakeState(vendor.orderBy, vendor.pickup);
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-card">
+    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-card transition-shadow hover:shadow-[0_1px_2px_rgb(28_25_21/0.06),0_16px_40px_rgb(28_25_21/0.1)]">
       <Link
         to="/vendor/$id"
         params={{ id: vendor.id }}
@@ -136,11 +138,13 @@ export function VendorCard({
           alt=""
           width={144}
           height={144}
-          className="size-[4.5rem] shrink-0 rounded-xl sm:size-24"
+          className="size-[4.5rem] shrink-0 rotate-[-1.5deg] rounded-xl ring-4 ring-paper shadow-sm transition-transform group-hover:rotate-0 sm:size-24"
         />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <p className="text-[11px] font-medium tracking-wide text-porch uppercase">{vendor.category}</p>
+            <p className="text-[11px] font-medium tracking-wide text-porch uppercase">
+              {vendor.category}
+            </p>
             <PickupPill badge={badge} />
             <span className="hidden sm:inline-flex">
               <OrderByPill state={cutoff} />
@@ -168,11 +172,11 @@ export function VendorCard({
             <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate">{neighborhoodFromLocation(vendor.location)}</span>
           </p>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-2 space-y-1.5">
             {items.map((product) => (
-              <li key={product.id} className="flex items-baseline justify-between gap-2 text-sm">
+              <li key={product.id} className="flex items-center justify-between gap-2 text-sm">
                 <span className="truncate text-ink">{product.name}</span>
-                <span className="shrink-0 font-medium text-mango tabular-nums">{priceLabel(product)}</span>
+                <span className="price-tag price-tag-sm shrink-0">{priceLabel(product)}</span>
               </li>
             ))}
           </ul>
@@ -188,9 +192,10 @@ export function VendorCard({
         <Link
           to="/vendor/$id"
           params={{ id: vendor.id }}
-          className="inline-flex min-h-11 items-center text-sm font-medium text-porch hover:underline"
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-porch hover:underline"
         >
-          Visit porch
+          Visit the porch
+          <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
         <div className="flex items-center gap-2">
           {owned ? (
@@ -210,7 +215,10 @@ export function VendorCard({
               onClick={() => onToggleSaved(vendor.id)}
               className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-ink"
             >
-              <Star className={`size-4 ${saved ? "fill-mango text-mango" : "text-muted"}`} aria-hidden="true" />
+              <Star
+                className={`size-4 ${saved ? "fill-mango text-mango" : "text-muted"}`}
+                aria-hidden="true"
+              />
               {saved ? "Saved" : "Save"}
             </button>
           ) : null}
@@ -233,12 +241,12 @@ export function WeekFoodCard({ item, lazy }: { item: WeekFood; lazy: boolean }) 
         width={200}
         height={200}
         lazy={lazy}
-        className="aspect-square rounded-2xl border border-line bg-card shadow-card"
+        className="aspect-square rounded-2xl border-4 border-card bg-card shadow-card"
       />
       <p className="mt-2 truncate text-sm font-medium text-ink">{item.product.name}</p>
-      <p className="flex items-baseline justify-between gap-2 text-xs">
+      <p className="flex items-center justify-between gap-2 text-xs">
         <span className="truncate text-muted">{item.vendorName}</span>
-        <span className="shrink-0 font-medium text-mango tabular-nums">{priceLabel(item.product)}</span>
+        <span className="price-tag price-tag-sm shrink-0">{priceLabel(item.product)}</span>
       </p>
       <div className="hidden sm:block">
         <DietPills notes={item.product.dietNotes} limit={2} />
