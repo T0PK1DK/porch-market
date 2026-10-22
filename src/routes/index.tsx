@@ -250,6 +250,7 @@ function Home() {
         )}
       </section>
 
+      {category === "Saved" && shown.length === 0 ? null : (
       <section className="mt-12 grid gap-6 border-t border-line pt-8 md:grid-cols-[0.8fr_1.2fr]">
         <div>
           <h2 className="font-display text-3xl text-ink">How a porch works</h2>
@@ -270,6 +271,7 @@ function Home() {
           ))}
         </ol>
       </section>
+      )}
 
       <div className="mt-8">
         <LawNote />
