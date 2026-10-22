@@ -163,7 +163,14 @@ function FeedPage() {
           </p>
         )}
 
-        {ready && posts.length === 0 ? <EmptyNote copy={emptyFeedCopy()} /> : null}
+        {!ready ? (
+          <div className="mt-6 space-y-3" aria-busy="true">
+            <TicketSkeleton />
+            <TicketSkeleton />
+          </div>
+        ) : posts.length === 0 ? (
+          <EmptyNote copy={emptyFeedCopy()} />
+        ) : (
         <ol className="mt-6 space-y-3">
           {posts.map((post) => (
             <li key={post.id}>
@@ -193,6 +200,7 @@ function FeedPage() {
             </li>
           ))}
         </ol>
+        )}
       </div>
     </Shell>
   );

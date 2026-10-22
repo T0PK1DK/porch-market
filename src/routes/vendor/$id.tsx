@@ -143,7 +143,7 @@ function Storefront() {
     if (next.note) setWatchNote(next.note);
   }, [vendor, activeId, holds, cutoff?.accepting, id, nowTick, qty]);
 
-  if (!vendor && !ready) {
+  if (!ready) {
     return (
       <Shell>
         <StorefrontSkeleton />
