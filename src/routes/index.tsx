@@ -68,10 +68,11 @@ function Home() {
   const extras = useMemo(() => ({ savedIds }), [savedIds]);
 
   const matched = useMemo(
-    () => rankVendors(
-      vendors.filter((vendor) => vendorMatchesFilter(vendor, category, query, extras)),
-      query,
-    ),
+    () =>
+      rankVendors(
+        vendors.filter((vendor) => vendorMatchesFilter(vendor, category, query, extras)),
+        query,
+      ),
     [vendors, query, category, extras],
   );
 
@@ -91,7 +92,11 @@ function Home() {
     return sortVendors(located, sort);
   }, [matched, neighborhood, sort]);
 
-  const weekly = useMemo(() => thisWeeksFood(shown, category === "Saved" || category === "Open today" ? "All" : category), [shown, category]);
+  const weekly = useMemo(
+    () =>
+      thisWeeksFood(shown, category === "Saved" || category === "Open today" ? "All" : category),
+    [shown, category],
+  );
   const filtering = query.trim().length > 0 || category !== "All" || neighborhood != null;
 
   function clearFilters() {
@@ -138,7 +143,11 @@ function Home() {
         ) : null}
       </label>
 
-      <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-0.5" role="group" aria-label="Category">
+      <div
+        className="no-scrollbar mt-3 flex gap-2 overflow-x-auto pb-0.5"
+        role="group"
+        aria-label="Category"
+      >
         <FilterChip on={category === "All"} onClick={() => setCategory("All")}>
           All
         </FilterChip>
@@ -153,7 +162,10 @@ function Home() {
             {item}
           </FilterChip>
         ))}
-        <FilterChip on={category === COMMUNITY_FILTER} onClick={() => setCategory(COMMUNITY_FILTER)}>
+        <FilterChip
+          on={category === COMMUNITY_FILTER}
+          onClick={() => setCategory(COMMUNITY_FILTER)}
+        >
           {COMMUNITY_FILTER}
         </FilterChip>
       </div>
@@ -178,7 +190,11 @@ function Home() {
           </div>
           <div className="no-scrollbar mt-2 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1">
             {weekly.map((item, index) => (
-              <WeekFoodCard key={`${item.vendorId}-${item.product.id}`} item={item} lazy={index > 2} />
+              <WeekFoodCard
+                key={`${item.vendorId}-${item.product.id}`}
+                item={item}
+                lazy={index > 2}
+              />
             ))}
           </div>
         </section>
@@ -208,14 +224,18 @@ function Home() {
 
         {shown.length === 0 ? (
           <div className="mt-3 rounded-2xl border border-dashed border-line bg-card px-5 py-8 text-center">
-            <p className="font-display text-2xl text-ink">Nothing on the block matches.</p>
+            <p className="font-display text-2xl text-ink">
+              {category === "Saved" && !query.trim()
+                ? "No saved porches yet."
+                : "Nothing on the block matches."}
+            </p>
             <p className="mt-2 text-sm text-muted">
               {query.trim() && category !== "All"
                 ? `No porches match “${query.trim()}” in ${category}.`
                 : query.trim()
                   ? `No porches match “${query.trim()}”.`
                   : category === "Saved"
-                    ? "Save a porch from a card to find it here later."
+                    ? "Tap the star on any porch and it’ll wait for you here."
                     : category === "Open today"
                       ? "No listed pickup window falls on today."
                       : category === COMMUNITY_FILTER
@@ -231,18 +251,25 @@ function Home() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="inline-flex min-h-11 items-center rounded-full px-5 text-sm font-medium text-ink ring-1 ring-line hover:bg-foam"
+                  className={
+                    "inline-flex min-h-11 items-center rounded-full px-5 text-sm font-medium " +
+                    (category === "Saved"
+                      ? "bg-porch text-paper hover:bg-porch-deep"
+                      : "text-ink ring-1 ring-line hover:bg-foam")
+                  }
                 >
-                  Clear filters
+                  {category === "Saved" && !query.trim() ? "See all porches" : "Clear filters"}
                 </button>
               ) : null}
-              <Link
-                to="/create"
-                search={{}}
-                className="inline-flex min-h-11 items-center rounded-full bg-porch px-5 text-sm font-medium text-paper hover:bg-porch-deep"
-              >
-                Open a porch
-              </Link>
+              {category === "Saved" ? null : (
+                <Link
+                  to="/create"
+                  search={{}}
+                  className="inline-flex min-h-11 items-center rounded-full bg-porch px-5 text-sm font-medium text-paper hover:bg-porch-deep"
+                >
+                  Open a porch
+                </Link>
+              )}
             </div>
           </div>
         ) : (
