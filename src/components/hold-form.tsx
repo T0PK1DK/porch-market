@@ -98,16 +98,16 @@ export function HoldForm({
           {formError}
         </p>
       ) : null}
-      <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+      <div className="flex flex-nowrap items-center gap-2 sm:col-span-2">
         <button
           type="submit"
-          className="inline-flex min-h-11 items-center rounded-full bg-mango px-5 text-sm font-medium text-paper hover:bg-mango-deep"
+          className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-mango px-4 text-sm font-medium text-paper hover:bg-mango-deep"
         >
           {orderAhead ? "Place pickup order" : "Ask them to set one aside"}
         </button>
         <button
           type="button"
-          className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium text-ink hover:bg-foam"
+          className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sm font-medium text-ink hover:bg-foam"
           onClick={onClose}
         >
           Never mind

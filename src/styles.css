@@ -42,8 +42,9 @@
 
   .photo-frame {
     position: relative;
+    align-self: start;
     background: var(--color-card);
-    padding: 0.3rem 0.3rem 0.7rem;
+    padding: 0.28rem;
     border: 1px solid var(--color-line);
     box-shadow: var(--shadow-frame);
   }
@@ -71,8 +72,8 @@
 
   .photo-frame .price-tag {
     position: absolute;
-    right: 0.2rem;
-    bottom: 0.28rem;
+    right: 0.4rem;
+    bottom: 0.45rem;
   }
 
   .ticket {

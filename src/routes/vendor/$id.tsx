@@ -369,7 +369,7 @@ function Storefront() {
             return (
               <li key={product.id} className="rounded-2xl border border-line bg-card p-4 shadow-card sm:p-5">
                 <div className="flex gap-4">
-                  <div className="photo-frame w-20 shrink-0 sm:w-24">
+                  <div className="photo-frame w-20 shrink-0 self-start sm:w-24">
                     <Cover
                       src={product.image}
                       alt=""

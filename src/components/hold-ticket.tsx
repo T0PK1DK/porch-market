@@ -113,7 +113,7 @@ export function BoardTicket({
     <li className="ticket p-4 shadow-card">
       <div className="flex gap-3">
         {product ? (
-          <div className="photo-frame w-16 shrink-0">
+          <div className="photo-frame w-16 shrink-0 self-start">
             <Cover src={product.image} alt="" width={96} height={96} className="aspect-square" />
           </div>
         ) : null}
