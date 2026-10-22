@@ -4,24 +4,25 @@ import type { EmptyCopy } from "@/lib/hold-ui";
 export function EmptyNote({
   copy,
   compact = false,
+  onAction,
 }: {
   copy: EmptyCopy;
   compact?: boolean;
+  onAction?: () => void;
 }) {
+  const actionClass =
+    "mt-4 inline-flex min-h-11 items-center rounded-full bg-porch px-5 text-sm font-medium text-paper hover:bg-porch-deep";
   const action =
-    copy.action && copy.actionTo === "/create" ? (
-      <Link
-        to="/create"
-        search={{}}
-        className="mt-4 inline-flex min-h-11 items-center rounded-full bg-porch px-5 text-sm font-medium text-paper hover:bg-porch-deep"
-      >
+    copy.action && onAction ? (
+      <button type="button" className={actionClass} onClick={onAction}>
+        {copy.action}
+      </button>
+    ) : copy.action && copy.actionTo === "/create" ? (
+      <Link to="/create" search={{}} className={actionClass}>
         {copy.action}
       </Link>
     ) : copy.action && copy.actionTo === "/" ? (
-      <Link
-        to="/"
-        className="mt-4 inline-flex min-h-11 items-center rounded-full bg-porch px-5 text-sm font-medium text-paper hover:bg-porch-deep"
-      >
+      <Link to="/" className={actionClass}>
         {copy.action}
       </Link>
     ) : null;

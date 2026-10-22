@@ -212,7 +212,10 @@ function Home() {
 
         {shown.length === 0 ? (
           <div>
-            <EmptyNote copy={browseEmptyCopy({ query, category, neighborhood })} />
+            <EmptyNote
+              copy={browseEmptyCopy({ query, category, neighborhood })}
+              onAction={category === "Saved" ? () => setCategory("All") : undefined}
+            />
             {filtering && category !== "Saved" ? (
               <div className="mt-3 flex justify-center">
                 <button
