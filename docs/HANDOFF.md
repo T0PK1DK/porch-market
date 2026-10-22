@@ -132,6 +132,18 @@ Visual and copy pass at 390px portrait and landscape. **Bake-day cutoff and `pla
 
 Helpers and tests: `src/lib/hold-ui.ts`, `src/lib/hold-ui.test.ts`.
 
+## Pass — phone details (skeletons, empty/error, mid-hold)
+
+Second polish pass on the same overnight branch. Still visual/copy only. **Bake-day cutoff and `placeHold` are unchanged.**
+
+- Browse, storefront, holds, and feed show paper skeletons until localStorage is read.
+- Blank or broken photos keep the snapshot frame and say “Porch.” Long kitchen and loaf names wrap or clamp instead of shoving the price tag.
+- If the last loaf goes or the order-by time passes while the hold form is open, the form closes and a short note explains why. Another tab’s hold updates this phone through the storage event.
+- Copy-link failure has a fallback note. An empty shelf and an empty feed have their own copy. Buyer names cap at 80 characters; kitchen notes at 140.
+- Buttons stay at least 44px tall. Forms and tickets rise in; empty notes fade in. `prefers-reduced-motion` still turns those off.
+
+Helpers added on this pass: `holdFormGate`, `nextHoldFormState`, `holdWatchDelayMs`, `hasDisplayPhoto`, `shortLabel`, `copyFailedNote`, `emptyShelfCopy`, `emptyFeedCopy`.
+
 ### Safe next steps (pick one)
 
 1. Expire stale “ready at 4pm” **feed** posts so the board does not lie — still local.
