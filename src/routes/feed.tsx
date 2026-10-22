@@ -179,9 +179,7 @@ function FeedPage() {
                     )}
                   </div>
                   <p className="mt-2 text-ink">{post.text}</p>
-                  <p className="mt-2 text-xs text-muted">
-                    {[relativeTime(post.createdAt), "Open this porch"].filter(Boolean).join(" · ")}
-                  </p>
+                  <p className="mt-2 text-xs text-muted">{relativeTime(post.createdAt)}</p>
                 </div>
               </Link>
             </li>
