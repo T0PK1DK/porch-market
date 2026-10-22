@@ -388,9 +388,13 @@ function Storefront() {
                       <CommunityBadge offer={product.communityOffer} />
                       <StockPill remaining={left} />
                     </div>
-                    <p className="mt-1 text-sm text-muted">{product.desc}</p>
-                    {product.readyNote ? <p className="ready-note mt-1 text-sm text-ink">{product.readyNote}</p> : null}
-                    <DietPills notes={product.dietNotes} />
+                    {open ? null : (
+                      <>
+                        <p className="mt-1 text-sm text-muted">{product.desc}</p>
+                        {product.readyNote ? <p className="ready-note mt-1 text-sm text-ink">{product.readyNote}</p> : null}
+                        <DietPills notes={product.dietNotes} />
+                      </>
+                    )}
                     {soldOut ? (
                       <p className="mt-3 text-sm text-muted">Spoken for this week</p>
                     ) : closed ? (

@@ -34,13 +34,13 @@ export function HoldForm({
   const max = remaining ?? 12;
 
   useEffect(() => {
-    formRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    formRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, []);
 
   return (
     <form
       ref={formRef}
-      className="ticket mt-4 grid scroll-mt-24 gap-3 p-4 sm:grid-cols-2 [@media(max-height:480px)]:grid-cols-1"
+      className="ticket mt-4 grid scroll-mt-24 scroll-mb-24 gap-3 p-4 sm:grid-cols-2 [@media(max-height:480px)]:grid-cols-1"
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit();
@@ -59,7 +59,7 @@ export function HoldForm({
       </label>
       <div className="text-sm font-medium text-ink">
         How many
-        <div className="qty-stepper mt-1.5 min-h-12 w-full justify-between px-1 sm:w-auto sm:justify-start">
+        <div className="qty-stepper mt-1.5 min-h-11 w-fit justify-start px-1">
           <button
             type="button"
             className="inline-flex size-11 items-center justify-center rounded-full text-lg text-ink hover:bg-foam disabled:opacity-40"
