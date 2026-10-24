@@ -667,10 +667,12 @@ describe("stock, plates, saved porches, and hold status", () => {
   it("refuses a hold that would oversell the weekly cap", () => {
     const vendor = SAMPLE_VENDORS[0];
     const product = { ...vendor.products[0], stock: 2 };
-    const first = placeHold({ vendor, product, buyerName: "Alex", qty: 2 });
+    // Thursday before Friday 8pm — this case measures stock, not the bake-day window.
+    const now = new Date(2026, 9, 22, 16);
+    const first = placeHold({ vendor, product, buyerName: "Alex", qty: 2, now });
     assert.equal(first.error, undefined);
     assert.ok(first.hold);
-    const second = placeHold({ vendor, product, buyerName: "Sam", qty: 1 });
+    const second = placeHold({ vendor, product, buyerName: "Sam", qty: 1, now });
     assert.equal(second.hold, null);
     assert.match(second.error, /spoken for|left/i);
   });

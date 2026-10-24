@@ -8,7 +8,13 @@ dist
 !.env.example
 screenshots
 artifacts
-.grok
+# Runtime Grok state only — skills and shipped app-env stay tracked.
+# A blanket `.grok` ignore dropped `.grok/skills/og` and `.grok/app-env.json`,
+# which `npm test` requires on the template.
+.grok/preview.pid
+.grok/preview.log
+.grok/og-pending
+.grok/*.tmp
 *.log
 .DS_Store
 .tanstack
