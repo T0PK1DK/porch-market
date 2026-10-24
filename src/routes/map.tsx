@@ -65,7 +65,7 @@ export function MapPage() {
         </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_0.8fr]">
-          <div className="h-[28rem] overflow-hidden rounded-2xl border border-line bg-card shadow-card sm:h-[32rem]">
+          <div className="h-[min(28rem,calc(100dvh-14rem))] overflow-hidden rounded-2xl border border-line bg-card shadow-card sm:h-[min(32rem,calc(100dvh-12rem))]">
             <StreetMap
               pins={shown}
               activeId={active?.vendorId}

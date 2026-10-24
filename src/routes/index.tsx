@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { BlockMap } from "@/components/block-map";
 import { LawNote } from "@/components/law-note";
 import { Shell } from "@/components/shell";
+import { EmptyNote } from "@/components/empty-note";
+import { PorchCardSkeleton, WeekRowSkeleton } from "@/components/skeleton";
 import { VendorCard, WeekFoodCard } from "@/components/vendor-card";
+import { browseEmptyCopy } from "@/lib/hold-ui";
 import {
   CATEGORIES,
   COMMUNITY_FILTER,
@@ -58,11 +61,13 @@ function Home() {
   const [category, setCategory] = useState<MarketFilter>("All");
   const [neighborhood, setNeighborhood] = useState<string | null>(null);
   const [sort, setSort] = useState<MarketSort>("neighborhood");
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     setVendors(loadVendors());
     setHolds(loadHolds());
     setSavedIds(loadSavedIds());
+    setReady(true);
   }, []);
 
   const extras = useMemo(() => ({ savedIds }), [savedIds]);
@@ -114,7 +119,7 @@ function Home() {
 
   return (
     <Shell>
-      <p className="pt-3 text-sm text-muted">
+      <p className="site-intro pt-3 text-sm text-muted">
         Cottage kitchens on the block — browse, save a porch, then ask for a pickup hold.
       </p>
 
@@ -158,17 +163,26 @@ function Home() {
         </FilterChip>
       </div>
 
-      <div className="mt-3">
-        <BlockMap active={neighborhood} counts={neighborhoodCounts} onSelect={setNeighborhood} />
-        <p className="mt-2 text-sm text-muted">
-          Neighborhood filter only — home pins stay approximate.{" "}
-          <Link to="/map" className="font-medium text-porch hover:underline">
-            Open the street map
-          </Link>
-        </p>
-      </div>
+      {category !== "Saved" || shown.length > 0 ? (
+        <div className="mt-3">
+          <BlockMap active={neighborhood} counts={neighborhoodCounts} onSelect={setNeighborhood} />
+          <p className="mt-2 text-sm text-muted">
+            Neighborhood filter only — home pins stay approximate.{" "}
+            <Link to="/map" className="font-medium text-porch hover:underline">
+              Open the street map
+            </Link>
+          </p>
+        </div>
+      ) : null}
 
-      {weekly.length > 0 && (
+      {!ready ? (
+        <section className="mt-4" aria-busy="true">
+          <h2 className="font-display text-xl text-ink">This week</h2>
+          <div className="mt-2">
+            <WeekRowSkeleton />
+          </div>
+        </section>
+      ) : weekly.length > 0 ? (
         <section className="mt-4" aria-labelledby="week-heading">
           <div className="flex items-baseline justify-between gap-3">
             <h2 id="week-heading" className="font-display text-xl text-ink">
@@ -182,7 +196,7 @@ function Home() {
             ))}
           </div>
         </section>
-      )}
+      ) : null}
 
       <section id="vendors" className="scroll-mt-20 pt-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -206,28 +220,19 @@ function Home() {
           </div>
         </div>
 
-        {shown.length === 0 ? (
-          <div className="mt-3 rounded-2xl border border-dashed border-line bg-card px-5 py-8 text-center">
-            <p className="font-display text-2xl text-ink">Nothing on the block matches.</p>
-            <p className="mt-2 text-sm text-muted">
-              {query.trim() && category !== "All"
-                ? `No porches match “${query.trim()}” in ${category}.`
-                : query.trim()
-                  ? `No porches match “${query.trim()}”.`
-                  : category === "Saved"
-                    ? "Save a porch from a card to find it here later."
-                    : category === "Open today"
-                      ? "No listed pickup window falls on today."
-                      : category === COMMUNITY_FILTER
-                        ? "No community kitchen plates on this phone right now."
-                        : category !== "All"
-                          ? `No ${category.toLowerCase()} porches right now.`
-                          : neighborhood
-                            ? `No porches in ${neighborhood} with these filters.`
-                            : "Try another kitchen, or open yours."}
-            </p>
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-              {filtering ? (
+        {!ready ? (
+          <div className="mt-3 grid gap-3" aria-busy="true">
+            <PorchCardSkeleton />
+            <PorchCardSkeleton />
+          </div>
+        ) : shown.length === 0 ? (
+          <div>
+            <EmptyNote
+              copy={browseEmptyCopy({ query, category, neighborhood })}
+              onAction={category === "Saved" ? () => setCategory("All") : undefined}
+            />
+            {filtering && category !== "Saved" ? (
+              <div className="mt-3 flex justify-center">
                 <button
                   type="button"
                   onClick={clearFilters}
@@ -235,15 +240,8 @@ function Home() {
                 >
                   Clear filters
                 </button>
-              ) : null}
-              <Link
-                to="/create"
-                search={{}}
-                className="inline-flex min-h-11 items-center rounded-full bg-porch px-5 text-sm font-medium text-paper hover:bg-porch-deep"
-              >
-                Open a porch
-              </Link>
-            </div>
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="mt-3 space-y-6">
@@ -270,6 +268,7 @@ function Home() {
         )}
       </section>
 
+      {category === "Saved" && shown.length === 0 ? null : (
       <section className="mt-12 grid gap-6 border-t border-line pt-8 md:grid-cols-[0.8fr_1.2fr]">
         <div>
           <h2 className="font-display text-3xl text-ink">How a porch works</h2>
@@ -290,6 +289,7 @@ function Home() {
           ))}
         </ol>
       </section>
+      )}
 
       <div className="mt-8">
         <LawNote />
