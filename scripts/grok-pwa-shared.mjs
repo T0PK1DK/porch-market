@@ -339,12 +339,19 @@ function applyCustomCardFromFs(site, cwd) {
   return { ...site, card: "custom", image: disk };
 }
 
+/** Card path from a baked `site` only — no workspace filesystem. */
+function bakedOgAsset(site = {}) {
+  return siteHasCustomCard(site) || Boolean(String(site.image ?? "").trim())
+    ? String(site.image ?? "").trim() || "/og.jpg"
+    : "";
+}
+
 export function grokOgHeadTags({
   host = "",
   appName = DEFAULT_APP_NAME,
   site = {},
   documentTitle = "",
-  cwd = process.cwd(),
+  cwd,
 } = {}) {
   const title = resolveOgTitle(site, appName, host, documentTitle);
   const publicHost = resolvePublicHost(host);
@@ -360,7 +367,10 @@ export function grokOgHeadTags({
     tags.push(`<meta property="og:type" content="x:game">`);
   }
   if (publicHost) {
-    const asset = resolveOgCardAsset(site, cwd);
+    // Disk lookup only when the caller passed `cwd` (Vite plugin). Isolated
+    // injects — unit tests and the Nitro bake — must not leak this workspace's
+    // public/og.jpg into a placeholder-card case.
+    const asset = cwd !== undefined ? resolveOgCardAsset(site, cwd) : bakedOgAsset(site);
     const custom = Boolean(asset);
     let image = custom
       ? `https://${publicHost}${asset.startsWith("/") ? asset : `/${asset}`}`
@@ -414,15 +424,19 @@ function insertBeforeHeadClose(html, snippet) {
 }
 
 export function normalizeHeadContext(ctx = {}) {
-  const cwd = ctx.cwd ?? process.cwd();
-  // Middleware passes a baked `site`. Still consult the workspace so a
-  // public/og.jpg generated after that snapshot (or missed by a wrong cwd)
-  // wins over the og.grok.me placeholder. Vercel has no public/ to read, so
-  // a correct bake is unchanged.
-  const site = applyCustomCardFromFs(
-    ctx.site !== undefined ? ctx.site : snapshotOgIdentity(cwd).site,
-    cwd,
-  );
+  const explicitCwd = ctx.cwd !== undefined;
+  const cwd = explicitCwd ? ctx.cwd : process.cwd();
+  // Overlay public/og.jpg only when the caller passed `cwd`. The Vite plugin
+  // always does (config.root), so a card written after bake still wins over
+  // the placeholder. Isolated callers — unit tests and Nitro, which pass a
+  // baked `site` and no filesystem — must not inherit this workspace's
+  // site.json / public/og.jpg via process.cwd().
+  const site = explicitCwd
+    ? applyCustomCardFromFs(
+        ctx.site !== undefined ? ctx.site : snapshotOgIdentity(cwd).site,
+        cwd,
+      )
+    : { ...(ctx.site ?? {}) };
   const appName = resolveOgTitle(site, ctx.appName ?? DEFAULT_APP_NAME, ctx.host ?? "");
   return {
     appName,
@@ -437,6 +451,7 @@ export function normalizeHeadContext(ctx = {}) {
 
 export function injectGrokPwaHead(html, ctx = {}) {
   if (typeof html !== "string") return html;
+  const explicitCwd = ctx.cwd !== undefined;
   const { site, projectId, creator, creatorId, host, cwd } = normalizeHeadContext(ctx);
   const documentTitle = titleFromDocument(html);
   const appName = resolveOgTitle(
@@ -458,7 +473,13 @@ export function injectGrokPwaHead(html, ctx = {}) {
 
   next = insertAfterHeadOpen(
     next,
-    grokOgHeadTags({ host, appName, site, documentTitle, cwd }).join(""),
+    grokOgHeadTags({
+      host,
+      appName,
+      site,
+      documentTitle,
+      ...(explicitCwd ? { cwd } : {}),
+    }).join(""),
   );
 
   if (readGrokExtensionsEnabled() && !next.includes("/grok-app-builder/extensions.js")) {
@@ -510,8 +531,10 @@ export function createHeadInjector(ctx = {}) {
       creator: normalized.creator,
       creatorId: normalized.creatorId,
       host: normalized.host,
-      cwd: normalized.cwd,
       site: normalized.site,
+      // Do not pass a defaulted process.cwd() — that re-opens the workspace
+      // filesystem the isolated inject path is meant to skip.
+      ...(ctx.cwd !== undefined ? { cwd: ctx.cwd } : {}),
     });
 
   return {
